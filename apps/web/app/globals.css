@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* DESIGN.md owns theme tokens through the shared design compiler. */
+@layer base {
+  * { @apply border-border; }
+  html, body, #root { min-height: 100%; margin: 0; }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-body);
+    line-height: var(--line-height-body);
+  }
+  :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
+}
