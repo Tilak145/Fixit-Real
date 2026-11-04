@@ -6,10 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { PAID_PLANS } from "@/features/plans";
-
-/** The site's address, so the printed sheet points at the real product. */
-const SITE = "spk-920030597d19ec794a3e.exaspark.app";
-const SITE_URL = "https://" + SITE;
+import { SITE_HOST as SITE, SITE_URL } from "@/lib/site-contact";
 
 const CUSTOMER_POINTS = [
   { title: "Tell us what needs fixing", text: "Describe the problem, add a photo or short video, and say how urgent it is — water everywhere counts as an emergency." },

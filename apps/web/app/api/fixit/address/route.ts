@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SITE_EMAIL } from "@/lib/site-contact";
+import { SITE_EMAIL, SITE_URL } from "@/lib/site-contact";
 import {
   parseAddressSuggestions,
   parseNominatimSuggestions,
@@ -36,7 +36,7 @@ const NOMINATIM =
 const PHOTON = "https://photon.komoot.io/api/?limit=6&lang=en&q=";
 // Nominatim's usage policy asks for a way to contact the caller, and it is
 // needed from a datacentre address or the request is refused.
-const USER_AGENT = `FixIt/1.0 (https://spk-920030597d19ec794a3e.exaspark.app; ${SITE_EMAIL})`;
+const USER_AGENT = `FixIt/1.0 (${SITE_URL}; ${SITE_EMAIL})`;
 
 async function fetchJson(url: string, timeoutMs: number): Promise<unknown | null> {
   try {

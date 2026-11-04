@@ -1,6 +1,5 @@
 // Deletes the signed-in caller's account and data. The app calls it from its
-// account screen, and ExaSpark's public account-deletion page calls it after
-// an email code. Identity comes from Auth, never from the request body.
+// account screen. Identity comes from Auth, never from the request body.
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
 Deno.serve(async (request: Request) => {
   const reply = (body: object, status = 200) => Response.json(body, { status, headers: cors });

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Poppins, Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import "./spk-theme.css";
@@ -33,7 +32,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${nunito.variable}`}>
       <body>
-        <Script src="/spk-runtime-config.js" strategy="beforeInteractive" />
         <AppProviders designTheme={designTheme}>
           <AppShell>{children}</AppShell>
         </AppProviders>

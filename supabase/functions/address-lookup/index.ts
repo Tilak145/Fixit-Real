@@ -14,7 +14,7 @@ const NOMINATIM =
 const MIN_LOOKUP_LENGTH = 4;
 // Nominatim's usage policy asks for a way to contact the caller, and it is
 // needed from a datacentre address or the request is refused.
-const USER_AGENT = "FixIt/1.0 (https://spk-920030597d19ec794a3e.exaspark.app; support@fixit.example)";
+const USER_AGENT = `FixIt/1.0 (${Deno.env.get("APP_URL") ?? "no site set"}; ${Deno.env.get("SUPPORT_EMAIL") ?? "no contact set"})`;
 
 const STATE_CODES = {
   alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",

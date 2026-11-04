@@ -1,10 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-type RuntimeConfig = {
-  supabaseUrl?: string;
-  supabaseAnonKey?: string;
-};
-
 let client: SupabaseClient | null = null;
 
 export function isPublicSupabaseConfiguration(url: string, key: string): boolean {
@@ -19,15 +14,10 @@ export function isPublicSupabaseConfiguration(url: string, key: string): boolean
   }
 }
 
-// Resolve at use time: this module can load before the public config script.
-// Missing configuration must not permanently cache an unavailable client.
 function publicConfiguration(): { url: string; key: string } {
-  const config =
-    (globalThis as typeof globalThis & { __SPK_RUNTIME_CONFIG__?: RuntimeConfig })
-      .__SPK_RUNTIME_CONFIG__ ?? {};
   return {
-    url: config.supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    key: config.supabaseAnonKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+    key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
   };
 }
 

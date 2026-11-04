@@ -24,7 +24,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const url = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const schedulerKey = Deno.env.get("TRIAL_REMINDER_KEY") ?? "";
-const APP_URL = Deno.env.get("APP_URL") ?? "https://spk-920030597d19ec794a3e.exaspark.app";
+const APP_URL = (Deno.env.get("APP_URL") ?? "").replace(/\/+$/u, "");
 const RESEND_URL = "https://api.resend.com/emails";
 
 const cors = {
