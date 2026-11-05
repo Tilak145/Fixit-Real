@@ -70,7 +70,8 @@ Deno.serve(async (request: Request) => {
     .select("role")
     .eq("user_id", caller.user.id)
     .maybeSingle();
-  if (!role) return json({ error: "You do not have access to this dashboard." }, 403);
+  // Accounts is an owner-only screen: staff ("manager") are on app_roles too.
+  if (role?.role !== "admin") return json({ error: "Only the owner may manage accounts." }, 403);
 
   const body = await request.json().catch(() => ({})) as {
     action?: string;

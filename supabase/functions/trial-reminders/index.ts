@@ -12,9 +12,9 @@
 // read. With no provider configured it reports that honestly and sends nothing.
 //
 // How to call it:
-//   POST                                    -> send what is due (scheduler or manager)
+//   POST                                    -> send what is due (scheduler or owner)
 //   POST ?dry=1                             -> list what would be sent, send nothing
-//   Authorization: Bearer <user token>      -> a dashboard manager may run it
+//   Authorization: Bearer <user token>      -> the owner may run it
 //   x-reminder-key: <TRIAL_REMINDER_KEY>    -> a scheduler with the shared secret
 //
 // Requires 0053-0056.
@@ -95,7 +95,8 @@ Deno.serve(async (request: Request) => {
     const { data: user, error } = await admin.auth.getUser(token);
     if (error || !user.user) return json({ error: "Sign in first." }, 401);
     const { data: role } = await admin.from("app_roles").select("role").eq("user_id", user.user.id).maybeSingle();
-    if (!role) return json({ error: "You do not have access to this." }, 403);
+    // Trial reminders is an owner-only screen: staff ("manager") are on app_roles too.
+    if (role?.role !== "admin") return json({ error: "Only the owner may run trial reminders." }, 403);
     caller = "dashboard";
   } else if (!schedulerKey || key !== schedulerKey) {
     return json({ error: "Sign in first." }, 401);
