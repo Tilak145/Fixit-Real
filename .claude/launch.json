@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fixit-web",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["apps/web/node_modules/next/dist/bin/next", "dev", "--webpack", "-p", "3000", "apps/web"],
+      "port": 3000
+    }
+  ]
+}
