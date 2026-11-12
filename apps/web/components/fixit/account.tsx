@@ -16,6 +16,7 @@ import {
   listMyAppointments,
   listMyHistory,
   listMyRequests,
+  listMyReviews,
   respondToQuote,
   saveMyProfile,
   type HistoryEntry,
@@ -25,6 +26,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { QuoteComparison } from "@/components/fixit/quote-comparison";
 import { MessageThread } from "@/components/fixit/thread";
 import { AddressInput } from "@/components/fixit/address-input";
+import { ReviewForm } from "@/components/fixit/review-form";
 
 const STATUS: Record<string, { label: string; hint: string; className: string }> = {
   new: {
@@ -41,7 +43,7 @@ const STATUS: Record<string, { label: string; hint: string; className: string }>
   },
   completed: {
     label: "Completed",
-    hint: "This job is closed. Leave a review from the pro's profile.",
+    hint: "This job is finished.",
     className: "bg-muted text-muted-foreground",
   },
 };
@@ -88,7 +90,17 @@ function RequestCard({ request }: { request: MyRequest }) {
         <span>{request.city}</span>
         {request.provider_name ? <span>Pro: {request.provider_name}</span> : null}
       </div>
-      <p className="mt-3 border-t border-border pt-3 text-[12.5px] text-muted-foreground">{status.hint}</p>
+      <p className="mt-3 border-t border-border pt-3 text-[12.5px] text-muted-foreground">
+        {status.hint}
+        {request.status === "completed" && request.claimed_by ? (
+          <>
+            {" "}
+            <Link href={`/pros/${request.claimed_by}`} className="font-bold text-primary hover:underline">
+              See your review on their profile
+            </Link>
+          </>
+        ) : null}
+      </p>
       {(request.quotes ?? []).length > 0 ? (
         <QuoteComparison quotes={request.quotes ?? []} />
       ) : (
@@ -147,6 +159,50 @@ function Requests() {
       {all.map((request) => (
         <RequestCard key={request.id} request={request} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * Finished jobs still waiting on a review, asked at the top of the account so the
+ * customer sees it as soon as the pro closes the job. One form per professional,
+ * since a customer keeps one review for each. It disappears once they post.
+ */
+function JobsToReview() {
+  const requests = useQuery({ queryKey: ["my-requests"], queryFn: listMyRequests });
+  const reviews = useQuery({ queryKey: ["my-reviews"], queryFn: listMyReviews });
+  if (!requests.data || !reviews.data) return null;
+
+  const reviewed = new Set(reviews.data.map((review) => review.provider_id));
+  const waiting = new Map<string, MyRequest>();
+  for (const request of requests.data) {
+    if (request.status !== "completed" || !request.claimed_by) continue;
+    if (reviewed.has(request.claimed_by) || waiting.has(request.claimed_by)) continue;
+    waiting.set(request.claimed_by, request);
+  }
+  if (waiting.size === 0) return null;
+
+  return (
+    <div className="mb-8">
+      <h2 className="mb-1 font-display text-xl font-semibold">How did your job go?</h2>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Your review helps neighbours choose, and helps good pros get more work.
+      </p>
+      <div className="space-y-4">
+        {[...waiting.entries()].map(([providerId, request]) => {
+          const name = request.provider_name ?? "your pro";
+          const job = request.category_slug.replace(/-/g, " ");
+          return (
+            <ReviewForm
+              key={providerId}
+              providerId={providerId}
+              providerName={name}
+              title={`Rate ${name}`}
+              intro={`Your ${job} job in ${request.city} is finished. Your review appears on their profile and counts toward their rating.`}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -450,6 +506,8 @@ function AccountBody() {
           </div>
         ))}
       </div>
+
+      <JobsToReview />
 
       <div className="mb-8">
         <CustomerNumberCard />
