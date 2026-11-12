@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { Search, MapPin, Navigation, ShieldCheck, ThumbsUp, Zap, Clock, Users, ArrowRight } from "lucide-react";
+import { ArrowRight, BadgeCheck, Check, FileText, Lock, MapPin, Star } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/fixit/site-chrome";
 import { ProCard } from "@/components/fixit/pro-card";
 import { listCategories, listPros, listCategoryProCounts, listCities, isBackendConfigured } from "@/lib/fixit-server";
 import { ServiceIcon, CORE_CATEGORIES } from "@/components/fixit/service-icons";
-import { StepIcon } from "@/components/fixit/step-icons";
 import { HeroSearch } from "@/components/fixit/hero-search";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +46,52 @@ async function getHomeData(cityParam?: string) {
   };
 }
 
+const STEPS = [
+  {
+    title: "Describe the job",
+    text: "Tell us what's wrong and where you are. Add photos or a short video so pros can see the problem.",
+  },
+  {
+    title: "Compare itemized quotes",
+    text: "Matching local pros send their price, with labor, materials, timing and warranty laid out side by side.",
+  },
+  {
+    title: "Choose your pro",
+    text: "Accept the quote you want. The others close, and only your chosen pro receives your contact details.",
+  },
+];
+
+// Each of these is a rule the product enforces, not a marketing claim. Keep them
+// that way: a line belongs here only if the site really does it.
+const PROMISES = [
+  {
+    icon: BadgeCheck,
+    title: "“Verified” means checked",
+    text: "A pro earns the badge only after a person confirms their license with the state register and reviews their insurance certificate.",
+  },
+  {
+    icon: FileText,
+    title: "Prices you can compare",
+    text: "Every quote is broken down the same way, so differences and gaps are easy to spot before you decide.",
+  },
+  {
+    icon: Star,
+    title: "Reviews from finished jobs",
+    text: "Only a customer whose job with that pro is complete can review them, so ratings come from real work.",
+  },
+  {
+    icon: Lock,
+    title: "Your details stay private",
+    text: "Your phone number and address go only to the pro you choose. No cold calls from everyone else.",
+  },
+];
+
+const PRO_BENEFITS = [
+  "First 100 pros get 3 months free",
+  "A flat monthly fee, never charged per lead",
+  "See the job, location and budget before you quote",
+];
+
 export default async function HomePage({
   searchParams,
 }: {
@@ -54,7 +99,7 @@ export default async function HomePage({
 }) {
   const { city: cityParam } = await searchParams;
   const { configured, categories, pros, cities, chosenCity } = await getHomeData(cityParam);
-  // Point "view all / view more" at a category that has professionals behind it.
+  // Point "see more" at a category that has professionals behind it.
   const browseHref = `/services/${(categories.find((c) => c.pros > 0) ?? categories[0]).slug}`;
 
   return (
@@ -62,204 +107,225 @@ export default async function HomePage({
       <SiteHeader city={chosenCity} />
 
       {/* Hero */}
-      <section className="relative bg-secondary">
+      <section className="relative overflow-hidden bg-secondary">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/assets/e14a1b0b0af57e57cf93da2d6c9b64bbd74a0dc88e8d1c45c98610181f8d9b63.jpg"
           alt=""
           width={2688}
           height={1512}
+          fetchPriority="high"
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(90deg, rgba(13,24,43,.88) 0%, rgba(13,24,43,.55) 45%, rgba(13,24,43,.25) 100%)",
+              "linear-gradient(100deg, rgba(10,22,42,.94) 0%, rgba(10,22,42,.82) 45%, rgba(10,22,42,.5) 100%)",
           }}
         />
-        <div className="relative mx-auto flex max-w-[1280px] flex-wrap items-center gap-12 px-6 py-20">
-          <div className="min-w-[320px] max-w-[520px] flex-1 text-white">
-            <h1 className="mb-5 font-display text-5xl font-bold leading-[1.08]">
-              Get Your Home
-              <br />
-              Fixed <span className="text-[#F59A3D]">Today</span>
+        <div className="relative mx-auto grid max-w-[1280px] items-center gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,1fr)_448px] lg:gap-20 lg:py-24">
+          <div className="text-white">
+            {chosenCity ? (
+              <p className="mb-5 flex items-center gap-2 text-sm font-bold text-[#F59A3D]">
+                <MapPin className="h-4 w-4" aria-hidden="true" />
+                Home services in {chosenCity}
+              </p>
+            ) : null}
+            <h1 className="mb-5 max-w-[620px] font-display text-[38px] font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[56px]">
+              Find a local pro you can trust with your home
             </h1>
-            <p className="mb-7 max-w-[480px] text-[19px] leading-relaxed text-[#DCE6F2]">
-              Find trusted local professionals for any home service. Fast. Easy. Reliable.
+            <p className="mb-6 max-w-[540px] text-base leading-relaxed text-[#DCE6F2] sm:mb-8 sm:text-lg">
+              Describe your job once, compare itemized quotes from local professionals, and choose the right one.
             </p>
-            <div className="flex flex-wrap gap-9">
-              {[
-                { icon: ShieldCheck, label: "Licence & Insurance Checks" },
-                { icon: ThumbsUp, label: "Real Customer Reviews" },
-                { icon: Zap, label: "Fast Response" },
-                { icon: MapPin, label: "Local Experts" },
-              ].map(({ icon: Icon, label }) => (
-                <span key={label} className="flex items-center gap-2.5 text-sm font-bold">
-                  <Icon className="h-[22px] w-[22px]" aria-hidden="true" />
+            <ul className="flex flex-wrap gap-x-5 gap-y-2 sm:gap-x-7">
+              {["Free to request", "No obligation", "No cold calls"].map((label) => (
+                <li key={label} className="flex items-center gap-2 text-[15px] font-semibold">
+                  <Check className="h-[18px] w-[18px] flex-none text-[#F59A3D]" aria-hidden="true" />
                   {label}
-                </span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
 
-          <div className="min-w-[320px] max-w-[480px] flex-1 rounded-2xl bg-card p-8 shadow-2xl">
-            <h2 className="mb-1.5 text-center font-display text-2xl font-semibold">What do you need help with?</h2>
-            <p className="mb-5 text-center text-[13.5px] text-muted-foreground">
-              Tell us what&apos;s wrong and we&apos;ll find the right local pros.
-            </p>
+          <div className="rounded-xl bg-card p-6 text-card-foreground shadow-2xl sm:p-8">
+            <h2 className="mb-1 font-display text-[22px] font-semibold">Get free quotes</h2>
+            <p className="mb-5 text-sm text-muted-foreground">Tell us about your job. It only takes a minute.</p>
             <HeroSearch cities={cities} chosenCity={chosenCity} />
-            <div className="mt-5 flex flex-wrap justify-between gap-2 border-t border-border pt-4">
-              {[
-                { icon: Clock, label: "Get matched in minutes" },
-                { icon: Users, label: "Compare local pros" },
-                { icon: ShieldCheck, label: "No obligation quotes" },
-              ].map(({ icon: Icon, label }) => (
-                <span key={label} className="flex items-center gap-1.5 text-[12.5px] font-semibold text-muted-foreground">
-                  <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
-                  {label}
-                </span>
-              ))}
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Popular services */}
-      <section id="services" className="mx-auto w-full max-w-[1280px] px-6 pb-12 pt-14">
-        <div className="mb-6 flex items-baseline justify-between">
-          <h2 className="font-display text-[28px] font-semibold">Popular Home Services</h2>
-          <Link href={browseHref} className="text-sm font-bold text-primary hover:underline">
-            View All Services →
-          </Link>
-        </div>
-        <div className="flex flex-wrap gap-4">
-          {categories.map((c) =>
-            c.pros > 0 ? (
-              <Link
-                key={c.slug}
-                href={`/services/${c.slug}`}
-                className="flex w-[122px] flex-1 flex-col items-center rounded-xl border border-border bg-card px-2.5 pb-4 pt-5 text-center shadow-sm transition-colors hover:border-primary"
-              >
-                <ServiceIcon name={c.icon} className="mb-2.5 h-[34px] w-[34px] text-primary" aria-hidden="true" />
-                <span className="text-[13px] font-bold text-foreground/80">{c.name}</span>
-              </Link>
-            ) : (
-              /* No professional offers this service yet, so it is not bookable. */
-              <div
-                key={c.slug}
-                aria-disabled="true"
-                className="flex w-[122px] flex-1 cursor-not-allowed flex-col items-center rounded-xl border border-dashed border-border bg-card/60 px-2.5 pb-4 pt-5 text-center"
-              >
-                <ServiceIcon name={c.icon} className="mb-2.5 h-[34px] w-[34px] text-muted-foreground/50" aria-hidden="true" />
-                <span className="text-[13px] font-bold text-muted-foreground">{c.name}</span>
-                <span className="mt-1 rounded-full bg-muted px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Coming soon
+      {/* Services */}
+      <section id="services" className="mx-auto w-full max-w-[1280px] scroll-mt-20 px-4 py-14 sm:px-6 lg:py-20">
+        <h2 className="mb-2 font-display text-[28px] font-semibold sm:text-[32px]">What can we help you fix?</h2>
+        <p className="mb-8 text-base text-muted-foreground">Choose a service to get started.</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+          {categories.map((c) => (
+            <Link
+              key={c.slug}
+              href={`/services/${c.slug}`}
+              className="group flex flex-col rounded-xl border border-border bg-card p-4 outline-none ring-ring transition hover:border-primary hover:shadow-md focus-visible:ring-2 sm:p-5"
+            >
+              <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <ServiceIcon name={c.slug} className="h-7 w-7" aria-hidden="true" />
+              </span>
+              <span className="font-display text-[15px] font-semibold text-foreground sm:text-base">{c.name}</span>
+              {/* A service with no pros yet opens its waitlist, so the card still leads somewhere. */}
+              {c.pros > 0 ? (
+                <span className="mt-1 text-[13px] text-muted-foreground">
+                  {c.pros} local {c.pros === 1 ? "pro" : "pros"}
                 </span>
-              </div>
-            ),
-          )}
+              ) : null}
+            </Link>
+          ))}
         </div>
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="bg-[#E9F1FB] px-6 py-14">
-        <div className="mx-auto max-w-[1280px]">
-          <h2 className="mb-9 font-display text-[28px] font-semibold">How FixIt Works</h2>
-          <div className="flex flex-wrap items-start gap-6">
-            {[
-              {
-                n: "1",
-                title: "Tell Us What You Need",
-                text: "Describe the problem and provide your location.",
-              },
-              { n: "2", title: "Get Matched", text: "We find trusted local professionals for you." },
-              {
-                n: "3",
-                title: "Choose & Get It Done",
-                text: "Compare quotes, read reviews and hire the best pro.",
-              },
-            ].map((s, i) => (
-              <div key={s.n} className="flex min-w-[280px] flex-1 items-start gap-4">
-                <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary text-[15px] font-bold text-primary-foreground">
-                  {s.n}
+      <section id="how-it-works" className="scroll-mt-20 border-y border-border bg-card py-14 lg:py-20">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6">
+          <h2 className="mb-2 font-display text-[28px] font-semibold sm:text-[32px]">How FixIt works</h2>
+          <p className="mb-10 text-base text-muted-foreground">Three steps, with no phone calls to chase.</p>
+          <ol className="grid gap-8 md:grid-cols-3 md:gap-10">
+            {STEPS.map((step, index) => (
+              <li key={step.title} className="relative">
+                {index < STEPS.length - 1 ? (
+                  <span aria-hidden="true" className="absolute left-14 right-[-20px] top-5 hidden h-px bg-border md:block" />
+                ) : null}
+                <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-primary font-display text-base font-semibold text-primary-foreground">
+                  {index + 1}
                 </span>
-                                <span className="flex h-[72px] w-[72px] flex-none items-center justify-center rounded-full bg-card shadow-md">
-                  <StepIcon name={["clipboard", "users", "calendar"][i] ?? "clipboard"} className="h-8 w-8 text-primary" aria-hidden="true" />
+                <h3 className="mb-2 font-display text-lg font-semibold">{step.title}</h3>
+                <p className="max-w-[360px] text-[15px] leading-relaxed text-muted-foreground">{step.text}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* Why FixIt */}
+      <section className="mx-auto grid w-full max-w-[1280px] items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[440px_minmax(0,1fr)] lg:gap-16 lg:py-20">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/assets/cac346852d56c22dda280cbbb86392d83ec74ab6dbea19d462325fc89f7458a9.jpg"
+          alt="A plumber repairing the pipes under a kitchen sink"
+          width={1920}
+          height={2560}
+          loading="lazy"
+          className="aspect-[4/3] w-full rounded-xl object-cover object-[center_60%] lg:aspect-[4/5]"
+        />
+        <div>
+          <h2 className="mb-2 font-display text-[28px] font-semibold sm:text-[32px]">Built on proof, not promises</h2>
+          <p className="mb-8 max-w-[560px] text-base leading-relaxed text-muted-foreground">
+            Letting someone into your home takes trust. Here is what FixIt does to earn it.
+          </p>
+          <div className="grid gap-x-8 gap-y-7 sm:grid-cols-2">
+            {PROMISES.map(({ icon: Icon, title, text }) => (
+              <div key={title}>
+                <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <span>
-                  <strong className="mb-1 block font-display text-[17px]">{s.title}</strong>
-                  <span className="text-sm leading-relaxed text-muted-foreground">{s.text}</span>
-                </span>
+                <h3 className="mb-1.5 font-display text-base font-semibold">{title}</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">{text}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Top rated pros */}
-      <section className="mx-auto w-full max-w-[1280px] px-6 py-14">
-        <div className="mb-6 flex items-baseline justify-between">
-          <h2 className="font-display text-[28px] font-semibold">Top Rated Professionals Near You</h2>
-          <Link href={browseHref} className="text-sm font-bold text-primary hover:underline">
-            View More →
-          </Link>
+      {/* Local pros */}
+      <section className="border-t border-border bg-card py-14 lg:py-20">
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6">
+          {!configured ? (
+            <p className="rounded-lg border border-border bg-background p-6 text-sm text-muted-foreground">
+              Provider profiles are unavailable because data services are not connected yet.
+            </p>
+          ) : pros.length > 0 ? (
+            <>
+              <div className="mb-8 flex flex-wrap items-baseline justify-between gap-3">
+                <h2 className="font-display text-[28px] font-semibold sm:text-[32px]">
+                  Professionals {chosenCity ? `in ${chosenCity}` : "near you"}
+                </h2>
+                <Link href={browseHref} className="text-sm font-bold text-primary hover:underline">
+                  See more professionals
+                </Link>
+              </div>
+              <div className="flex flex-wrap gap-6">
+                {pros.map((p) => (
+                  <ProCard key={p.id} pro={p} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
+              <div>
+                <h2 className="mb-2 font-display text-[28px] font-semibold sm:text-[32px]">
+                  {chosenCity ? `We're adding professionals in ${chosenCity}` : "We're adding local professionals"}
+                </h2>
+                <p className="max-w-[620px] text-base leading-relaxed text-muted-foreground">
+                  Post your job now and we will match you as soon as a pro who covers your area joins.
+                </p>
+                {cities.length > 1 ? (
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {cities.map((city) => (
+                      <Link
+                        key={city.label}
+                        href={"/?city=" + encodeURIComponent(city.label)}
+                        aria-current={city.label === chosenCity ? "true" : undefined}
+                        className={
+                          "rounded-full border px-3.5 py-2 text-[13px] font-bold transition " +
+                          (city.label === chosenCity
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-foreground/80 hover:border-primary hover:text-primary")
+                        }
+                      >
+                        {city.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <Link
+                href={chosenCity ? "/request?city=" + encodeURIComponent(chosenCity) : "/request"}
+                className="inline-flex h-12 items-center justify-center gap-2 justify-self-start whitespace-nowrap rounded-md bg-primary px-7 font-display text-[15px] font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Post your job <ArrowRight className="h-[18px] w-[18px]" aria-hidden="true" />
+              </Link>
+            </div>
+          )}
         </div>
-        {!configured ? (
-          <p className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
-            Provider profiles are unavailable because data services are not connected yet.
-          </p>
-        ) : pros.length === 0 ? (
-          <p className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
-            {chosenCity && cities.length > 0 ? (
-              <>
-                No professional covers {chosenCity} yet. Pick another city, or tell us what you need and we
-                will match you as soon as one joins —{" "}
-                <Link href={"/request?city=" + encodeURIComponent(chosenCity)} className="font-bold text-primary">
-                  post your job
-                </Link>
-                .
-              </>
-            ) : (
-              <>
-                No professionals have joined yet. Are you a local pro?{" "}
-                <Link href="/for-businesses" className="font-bold text-primary">
-                  List your business
-                </Link>
-                .
-              </>
-            )}
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-6">
-            {pros.map((p) => (
-              <ProCard key={p.id} pro={p} />
-            ))}
-          </div>
-        )}
       </section>
 
-      {/* CTA band */}
-      <section className="bg-secondary px-6 py-14">
-        <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-8">
+      {/* For professionals */}
+      <section className="bg-secondary py-14 lg:py-20">
+        <div className="mx-auto grid max-w-[1280px] items-center gap-10 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
           <div>
-            <h2 className="mb-2 font-display text-[28px] font-semibold text-white">
+            <h2 className="mb-3 font-display text-[28px] font-semibold text-white sm:text-[32px]">
               Are you a local service professional?
             </h2>
-            <p className="text-base text-[#B9C8DC]">
-              Grow your business and get more local customers with FixIt.
+            <p className="mb-6 max-w-[620px] text-base leading-relaxed text-[#C7D4E5]">
+              Get local jobs you choose to quote, and manage leads, visits and reviews in one dashboard.
             </p>
+            <ul className="grid gap-3">
+              {PRO_BENEFITS.map((benefit) => (
+                <li key={benefit} className="flex items-start gap-2.5 text-[15px] font-semibold text-white">
+                  <Check className="mt-0.5 h-[18px] w-[18px] flex-none text-[#F59A3D]" aria-hidden="true" />
+                  {benefit}
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
             <Link
               href="/for-businesses"
-              className="rounded-md bg-accent px-9 py-4 font-display text-base font-semibold text-accent-foreground hover:bg-accent/90"
+              className="inline-flex h-[52px] items-center justify-center gap-2 whitespace-nowrap rounded-md bg-accent px-8 font-display text-base font-semibold text-accent-foreground hover:bg-accent/90"
             >
-              Grow Your Business →
+              List your business <ArrowRight className="h-[18px] w-[18px]" aria-hidden="true" />
             </Link>
             <Link
               href="/pro/dashboard"
-              className="rounded-md border border-white/25 px-9 py-4 font-display text-base font-semibold text-white hover:bg-white/10"
+              className="inline-flex h-[52px] items-center justify-center whitespace-nowrap rounded-md border border-white/30 px-8 font-display text-base font-semibold text-white hover:bg-white/10"
             >
               Pro sign in
             </Link>

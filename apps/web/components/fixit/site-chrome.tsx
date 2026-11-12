@@ -61,7 +61,7 @@ function CityPicker({ city }: { city?: string | null }) {
   }
 
   return (
-    <span className="relative hidden items-center sm:flex">
+    <span className="relative hidden items-center lg:flex">
       <MapPin className="pointer-events-none absolute left-3 h-4 w-4 text-accent" aria-hidden="true" />
       <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
       <select
@@ -180,7 +180,7 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
     <header className="sticky top-0 z-40 border-b border-border bg-card">
       <div className="mx-auto flex max-w-[1280px] items-center gap-3 px-4 py-4 sm:gap-8 sm:px-6">
         <FixItLogo />
-        <nav className="hidden items-center gap-7 text-sm font-semibold text-foreground/80 md:flex">
+        <nav className="hidden items-center gap-7 whitespace-nowrap text-sm font-semibold text-foreground/80 md:flex">
           <Link href="/" className={pathname === "/" ? "text-primary" : "hover:text-primary"}>
             Home
           </Link>
@@ -243,15 +243,15 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
 export function SiteFooter() {
   return (
     <footer className="bg-foreground py-12 text-[#9FB0C4]">
-      <div className="mx-auto flex max-w-[1280px] flex-wrap gap-12 px-6">
-        <div className="min-w-[240px] flex-1">
+      <div className="mx-auto grid max-w-[1280px] grid-cols-2 gap-x-8 gap-y-10 px-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
+        <div className="col-span-2 lg:col-span-1">
           <FixItLogo dark />
           <p className="mt-3 max-w-[280px] text-sm leading-relaxed">
-            The trusted marketplace for local home services. Real pros, real reviews, real results.
+            The marketplace for local home services, built on checks you can see.
           </p>
         </div>
-        <div className="w-40">
-          <strong className="mb-3 block text-sm text-foreground">Services</strong>
+        <div>
+          <strong className="mb-3 block text-sm text-white">Services</strong>
           {["Plumbing", "Electrical", "HVAC", "Roofing", "Cleaning"].map((s) => (
             <Link
               key={s}
@@ -262,8 +262,8 @@ export function SiteFooter() {
             </Link>
           ))}
         </div>
-        <div className="w-40">
-          <strong className="mb-3 block text-sm text-foreground">Company</strong>
+        <div>
+          <strong className="mb-3 block text-sm text-white">Company</strong>
           <Link href="/#how-it-works" className="mb-2 block text-sm hover:text-white">
             How It Works
           </Link>
@@ -281,15 +281,14 @@ export function SiteFooter() {
             Manager Sign-In
           </Link>
         </div>
-        <div className="w-52">
-          <strong className="mb-3 block text-sm text-foreground">Get in touch</strong>
+        <div className="col-span-2 lg:col-span-1">
+          <strong className="mb-3 block text-sm text-white">Get in touch</strong>
           <a href={`mailto:${SITE_EMAIL}`} className="mb-2 block text-sm hover:text-white">
             {SITE_EMAIL}
           </a>
           <a href={SITE_PHONE_HREF} className="mb-2 block text-sm hover:text-white">
             {SITE_PHONE}
           </a>
-          <span className="block text-sm">© 2026 FixIt Local Services</span>
         </div>
       </div>
       <div className="mx-auto mt-10 flex max-w-[1280px] flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/10 px-6 pt-6 text-[13px]">
@@ -303,6 +302,7 @@ export function SiteFooter() {
             {label}
           </Link>
         ))}
+        <span className="lg:ml-auto">© 2026 FixIt Local Services</span>
       </div>
     </footer>
   );

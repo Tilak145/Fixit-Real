@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { ArrowRight, MapPin, Navigation, Search } from "lucide-react";
+import { ArrowRight, ChevronDown, MapPin, Search } from "lucide-react";
 import { QuoteRequestForm } from "@/components/fixit/request-quote";
 
 /**
@@ -73,8 +73,8 @@ export function HeroSearch({
         }}
       >
         <div>
-          <label htmlFor="hero-job" className="mb-1.5 block text-xs font-bold text-muted-foreground">
-            What do you need?
+          <label htmlFor="hero-job" className="mb-1.5 block text-[13px] font-bold text-foreground/80">
+            What do you need help with?
           </label>
           <div className="relative">
             <Search className="absolute left-3.5 top-3.5 h-[18px] w-[18px] text-muted-foreground" aria-hidden="true" />
@@ -85,31 +85,34 @@ export function HeroSearch({
               type="text"
               value={job}
               onChange={(event) => setJob(event.target.value)}
-              placeholder="For example: garage door won't open, leaky faucet…"
-              className="h-[46px] w-full rounded-md border border-input bg-input px-3.5 pl-10 text-sm outline-none ring-ring focus:ring-2"
+              placeholder="Leaky faucet, stuck garage door…"
+              className="h-12 w-full rounded-md border border-border bg-input px-3.5 pl-10 text-[15px] outline-none ring-ring focus:ring-2"
             />
           </div>
         </div>
         <div>
-          <label htmlFor="hero-loc" className="mb-1.5 block text-xs font-bold text-muted-foreground">
-            Where?
+          <label htmlFor="hero-loc" className="mb-1.5 block text-[13px] font-bold text-foreground/80">
+            Where is the job?
           </label>
           <div className="relative">
-            <MapPin className="absolute left-3.5 top-3.5 h-[18px] w-[18px] text-accent" aria-hidden="true" />
+            <MapPin className="pointer-events-none absolute left-3.5 top-[15px] h-[18px] w-[18px] text-accent" aria-hidden="true" />
             {cities.length > 0 ? (
-              <select
-                id="hero-loc"
-                name="city"
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                className="h-[46px] w-full appearance-none rounded-md border border-input bg-input px-3.5 pl-10 pr-11 text-sm outline-none ring-ring focus:ring-2"
-              >
-                {cities.map((entry) => (
-                  <option key={entry.label} value={entry.label}>
-                    {entry.label}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select
+                  id="hero-loc"
+                  name="city"
+                  value={city}
+                  onChange={(event) => setCity(event.target.value)}
+                  className="h-12 w-full appearance-none rounded-md border border-border bg-input px-3.5 pl-10 pr-10 text-[15px] outline-none ring-ring focus:ring-2"
+                >
+                  {cities.map((entry) => (
+                    <option key={entry.label} value={entry.label}>
+                      {entry.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-4 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              </>
             ) : (
               <input
                 id="hero-loc"
@@ -118,23 +121,16 @@ export function HeroSearch({
                 value={city}
                 onChange={(event) => setCity(event.target.value)}
                 placeholder="Your city"
-                className="h-[46px] w-full rounded-md border border-input bg-input px-3.5 pl-10 pr-11 text-sm outline-none ring-ring focus:ring-2"
+                className="h-12 w-full rounded-md border border-border bg-input px-3.5 pl-10 text-[15px] outline-none ring-ring focus:ring-2"
               />
             )}
-            <button
-              type="button"
-              aria-label="Use my location"
-              className="absolute right-1.5 top-1.5 flex h-[34px] w-[34px] items-center justify-center rounded-md bg-muted"
-            >
-              <Navigation className="h-4 w-4 text-primary" aria-hidden="true" />
-            </button>
           </div>
         </div>
         <button
           type="submit"
           className="flex h-[52px] w-full items-center justify-center gap-2.5 rounded-md bg-accent font-display text-base font-semibold text-accent-foreground hover:bg-accent/90"
         >
-          Find a Professional <ArrowRight className="h-[18px] w-[18px]" aria-hidden="true" />
+          Get Free Quotes <ArrowRight className="h-[18px] w-[18px]" aria-hidden="true" />
         </button>
       </form>
 

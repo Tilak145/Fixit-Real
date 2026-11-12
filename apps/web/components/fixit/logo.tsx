@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function FixItLogo({ dark = false }: { dark?: boolean }) {
   return (
-    <Link href="/" className="inline-flex items-center gap-2">
+    <Link href="/" className="inline-flex flex-none items-center gap-2 whitespace-nowrap">
       <svg width="34" height="30" viewBox="0 0 40 34" aria-hidden="true">
         <path d="M20 1 2 16h6v17h24V16h6z" fill={dark ? "#4D8FE0" : "#1565C0"} />
         <circle cx="20" cy="17" r="10" fill={dark ? "#0D2C54" : "#FFFFFF"} />
