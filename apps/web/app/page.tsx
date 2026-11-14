@@ -121,8 +121,9 @@ export default async function HomePage({
     <div className="flex min-h-screen flex-col bg-background">
       <SiteHeader city={chosenCity} />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-secondary">
+      {/* Hero. The photo stops where the page content stops; on screens wider
+          than that it becomes a rounded panel instead of stretching edge to edge. */}
+      <section className="relative mx-auto w-full max-w-[1280px] overflow-hidden bg-secondary min-[1281px]:mt-4 min-[1281px]:rounded-2xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/assets/e14a1b0b0af57e57cf93da2d6c9b64bbd74a0dc88e8d1c45c98610181f8d9b63.jpg"
