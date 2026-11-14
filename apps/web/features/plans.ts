@@ -34,9 +34,9 @@ export const PLANS: Plan[] = [
     label: "Founding Pro",
     price: 0,
     badge: "First 100 pros",
-    tagline: "Your first three months are free, then the plan you choose.",
+    tagline: "Your first month is free, then the plan you choose.",
     features: [
-      "First 3 months free, then $99–$399 a month",
+      "First month free, then $99–$399 a month",
       "Unlimited lead access in your area",
       "Your profile in search results",
       "Verified licence badge",

@@ -1,7 +1,7 @@
 /**
  * Where a professional is in their free period.
  *
- * The first 100 professionals get three months free, then they pay the plan
+ * The first 100 professionals get one month free, then they pay the plan
  * they chose. This turns the stored end date into the one sentence the pro
  * needs: how long is left, and what happens next. It is deliberately blunt
  * about the end — a trial that quietly turns into a charge is the complaint

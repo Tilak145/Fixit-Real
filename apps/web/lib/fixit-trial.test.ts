@@ -11,10 +11,10 @@ test("no recorded end means no trial is tracked", () => {
   assert.equal(trialMessage(trialState(null, NOW), 49), "");
 });
 
-test("a fresh three-month free period is active", () => {
-  const state = trialState("2026-03-01T12:00:00Z", NOW);
+test("a fresh one-month free period is active", () => {
+  const state = trialState("2026-02-01T12:00:00Z", NOW);
   assert.equal(state.kind, "active");
-  assert.equal(state.daysLeft, 59);
+  assert.equal(state.daysLeft, 31);
 });
 
 test("the last two weeks read as ending soon", () => {

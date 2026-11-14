@@ -22,7 +22,7 @@ const sections: PolicySection[] = [
   {
     heading: "Plans and the free trial",
     items: [
-      "The first 100 professionals who join receive three months free. You choose the plan you want, and it starts to cost money when the free period ends.",
+      "The first 100 professionals who join receive one month free. You choose the plan you want, and it starts to cost money when the free period ends.",
       "After the free period, plans are billed monthly through our payment provider at the price shown before checkout: Starter $99, Professional $199, Business $399.",
       "Your plan sets your listing placement and how many cities and services you can cover. A plan change takes effect at the start of the next billing period.",
       "We tell you before your free period ends, so a charge is never a surprise.",

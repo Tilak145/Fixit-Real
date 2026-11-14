@@ -741,8 +741,8 @@ export function OnboardingWizard() {
                     </span>
                   </span>
                   <p className="mt-1 text-[12.5px] text-foreground/70">
-                    Your first three months are free. Pick the plan you want on the paid cards below, and
-                    we ask you to start paying when the three months are up. Cancel anytime.
+                    Your first month is free. Pick the plan you want on the paid cards below, and
+                    we ask you to start paying when the month is up. Cancel anytime.
                   </p>
                 </div>
                 <button

@@ -46,7 +46,7 @@ export function HeroSearch({
   return (
     <>
       <form
-        className="space-y-4"
+        className="space-y-3"
         onSubmit={(event) => {
           event.preventDefault();
           const words = job.toLowerCase();
@@ -77,7 +77,7 @@ export function HeroSearch({
             What do you need help with?
           </label>
           <div className="relative">
-            <Search className="absolute left-3.5 top-3.5 h-[18px] w-[18px] text-muted-foreground" aria-hidden="true" />
+            <Search className="absolute left-3.5 top-[13px] h-[18px] w-[18px] text-muted-foreground" aria-hidden="true" />
             <input
               ref={firstField}
               id="hero-job"
@@ -86,7 +86,7 @@ export function HeroSearch({
               value={job}
               onChange={(event) => setJob(event.target.value)}
               placeholder="Leaky faucet, stuck garage door…"
-              className="h-12 w-full rounded-md border border-border bg-input px-3.5 pl-10 text-[15px] outline-none ring-ring focus:ring-2"
+              className="h-11 w-full rounded-md border border-border bg-input px-3.5 pl-10 text-[15px] outline-none ring-ring focus:ring-2"
             />
           </div>
         </div>
@@ -95,7 +95,7 @@ export function HeroSearch({
             Where is the job?
           </label>
           <div className="relative">
-            <MapPin className="pointer-events-none absolute left-3.5 top-[15px] h-[18px] w-[18px] text-accent" aria-hidden="true" />
+            <MapPin className="pointer-events-none absolute left-3.5 top-[13px] h-[18px] w-[18px] text-accent" aria-hidden="true" />
             {cities.length > 0 ? (
               <>
                 <select
@@ -103,7 +103,7 @@ export function HeroSearch({
                   name="city"
                   value={city}
                   onChange={(event) => setCity(event.target.value)}
-                  className="h-12 w-full appearance-none rounded-md border border-border bg-input px-3.5 pl-10 pr-10 text-[15px] outline-none ring-ring focus:ring-2"
+                  className="h-11 w-full appearance-none rounded-md border border-border bg-input px-3.5 pl-10 pr-10 text-[15px] outline-none ring-ring focus:ring-2"
                 >
                   {cities.map((entry) => (
                     <option key={entry.label} value={entry.label}>
@@ -111,7 +111,7 @@ export function HeroSearch({
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-3.5 top-4 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-3.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
               </>
             ) : (
               <input
@@ -121,14 +121,14 @@ export function HeroSearch({
                 value={city}
                 onChange={(event) => setCity(event.target.value)}
                 placeholder="Your city"
-                className="h-12 w-full rounded-md border border-border bg-input px-3.5 pl-10 text-[15px] outline-none ring-ring focus:ring-2"
+                className="h-11 w-full rounded-md border border-border bg-input px-3.5 pl-10 text-[15px] outline-none ring-ring focus:ring-2"
               />
             )}
           </div>
         </div>
         <button
           type="submit"
-          className="flex h-[52px] w-full items-center justify-center gap-2.5 rounded-md bg-accent font-display text-base font-semibold text-accent-foreground hover:bg-accent/90"
+          className="flex h-[46px] w-full items-center justify-center gap-2.5 rounded-md bg-accent font-display text-base font-semibold text-accent-foreground hover:bg-accent/90"
         >
           Get Free Quotes <ArrowRight className="h-[18px] w-[18px]" aria-hidden="true" />
         </button>

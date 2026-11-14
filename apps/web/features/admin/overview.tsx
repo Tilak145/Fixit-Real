@@ -651,7 +651,7 @@ export function AdminOverview({ onOpen, onGo }: { onOpen: (table: string) => voi
             </span>
           </div>
           <p className="text-[12.5px] text-muted-foreground">
-            Each founding pro is free for three months, then pays the plan they chose. Nothing is charged
+            Each founding pro is free for one month, then pays the plan they chose. Nothing is charged
             automatically — this is where you see whose free period is about to end.
           </p>
           {foundingCohort.isPending ? (

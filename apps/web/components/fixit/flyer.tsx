@@ -33,7 +33,7 @@ const SERVICES = [
 ];
 
 const PRO_POINTS = [
-  { title: "Free for the first three months", text: "The first 100 Founding Pros pay nothing for three months. After that: Starter $99, Professional $199, Business $399 a month." },
+  { title: "Free for the first month", text: "The first 100 Founding Pros pay nothing for one month. After that: Starter $99, Professional $199, Business $399 a month." },
   { title: "Leads that fit your trade", text: "Requests arrive by service and city, with photos, the problem and a budget range — so you know what you are quoting before you spend time on it." },
   { title: "Your own dashboard", text: "Logo, profile, service area, availability calendar, quoting, appointments, messages and job records in one place." },
   { title: "Fair lead rules", text: "Every lead is counted once. Dispute a lead that is fake or was not yours, see how many become quotes and completed jobs." },
@@ -328,7 +328,7 @@ function drawFlyer(): HTMLCanvasElement {
   ctx.font = font(600, 17, HEADING_FONT);
   ctx.fillStyle = "#FFFFFF";
   ctx.fillText("For local professionals", pad + 20, y + 30);
-  const badge = "First 100 pros: 3 months free";
+  const badge = "First 100 pros: 1 month free";
   ctx.font = font(700, 11.5);
   const badgeWidth = ctx.measureText(badge).width + 24;
   ctx.fillStyle = INK.orange;
@@ -518,7 +518,7 @@ export function FlyerPage() {
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-display text-[17px] font-semibold">For local professionals</h2>
             <span className="rounded-full bg-accent px-3 py-1 text-[11.5px] font-bold text-white">
-              First 100 pros: 3 months free
+              First 100 pros: 1 month free
             </span>
           </div>
           <ul className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5">
@@ -539,7 +539,7 @@ export function FlyerPage() {
             ))}
           </div>
           <p className="mt-1.5 text-[11px] leading-[1.45] text-[#A7BBD3]">
-            After the free three months, you pay the plan you chose. Sign up at the site under
+            After the free month, you pay the plan you chose. Sign up at the site under
             &ldquo;Grow your business&rdquo;.
           </p>
         </section>

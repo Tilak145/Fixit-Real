@@ -139,7 +139,7 @@ function BusinessMenu({ onChoose }: { onChoose: (mode: Exclude<ProWindowMode, nu
             <span>
               <strong className="block text-[14px] text-secondary">Join as a pro</strong>
               <span className="block text-[12.5px] leading-snug text-muted-foreground">
-                New to FixIt? Create a business account — first 100 pros get 3 months free.
+                New to FixIt? Create a business account — first 100 pros get 1 month free.
               </span>
             </span>
           </button>
@@ -167,6 +167,34 @@ function BusinessMenu({ onChoose }: { onChoose: (mode: Exclude<ProWindowMode, nu
   );
 }
 
+/**
+ * A link to a section of the home page, such as "How It Works".
+ *
+ * A plain link to "/#how-it-works" does nothing when the address already ends
+ * in that anchor, so a second click after scrolling away looked broken, and it
+ * also threw away the chosen city. On the home page this scrolls to the section
+ * itself and keeps the rest of the address; elsewhere it is an ordinary link.
+ */
+function SectionLink({ id, className, children }: { id: string; className?: string; children: React.ReactNode }) {
+  const pathname = usePathname();
+  return (
+    <Link
+      href={`/#${id}`}
+      className={className}
+      onClick={(event) => {
+        if (pathname !== "/" || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const section = document.getElementById(id);
+        if (!section) return;
+        event.preventDefault();
+        section.scrollIntoView({ block: "start" });
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${id}`);
+      }}
+    >
+      {children}
+    </Link>
+  );
+}
+
 export function SiteHeader({ city }: { city?: string | null } = {}) {
   // Signed-out visitors keep the plain Log in / Join as a Pro links, so the
   // page renders the same before the session is known.
@@ -184,12 +212,12 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
           <Link href="/" className={pathname === "/" ? "text-primary" : "hover:text-primary"}>
             Home
           </Link>
-          <Link href="/#how-it-works" className="hover:text-primary">
+          <SectionLink id="how-it-works" className="hover:text-primary">
             How It Works
-          </Link>
-          <Link href="/#services" className="hover:text-primary">
+          </SectionLink>
+          <SectionLink id="services" className="hover:text-primary">
             Services
-          </Link>
+          </SectionLink>
         </nav>
         {/* Angi's arrangement: location, sign-in, join. */}
         <div className="ml-auto flex items-center gap-2.5 sm:gap-4">
@@ -264,9 +292,9 @@ export function SiteFooter() {
         </div>
         <div>
           <strong className="mb-3 block text-sm text-white">Company</strong>
-          <Link href="/#how-it-works" className="mb-2 block text-sm hover:text-white">
+          <SectionLink id="how-it-works" className="mb-2 block text-sm hover:text-white">
             How It Works
-          </Link>
+          </SectionLink>
           <Link href="/for-businesses" className="mb-2 block text-sm hover:text-white">
             Join as a pro
           </Link>

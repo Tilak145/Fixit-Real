@@ -14,7 +14,7 @@ const inputClass =
 
 const PERKS = [
   { icon: Users, title: "Local jobs in your trade", text: "Requests from your city, with photos and a budget." },
-  { icon: ShieldCheck, title: "Free for your first 3 months", text: "First 100 pros. Then the plan you choose." },
+  { icon: ShieldCheck, title: "Free for your first month", text: "First 100 pros. Then the plan you choose." },
   { icon: Clock, title: "Set it up in a few minutes", text: "Four fields now. The rest is saved as you go." },
 ];
 
@@ -189,7 +189,7 @@ export function ProviderSignUpForm({
       <div>
         <span className="inline-flex items-center gap-2 rounded-full bg-[#E9F1FB] px-3 py-1 text-[12px] font-bold text-primary">
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-          First 100 pros get three months free
+          First 100 pros get one month free
         </span>
         <h2 id="join-pro" className="mt-2 font-display text-[22px] font-semibold text-secondary">
           Join FixIt as a pro
@@ -233,7 +233,7 @@ export function ProviderSignUpForm({
           </h1>
           <p className="mt-3 max-w-[460px] text-[15px] leading-relaxed text-muted-foreground">
             Join FixIt, get seen by homeowners in your city, and quote only the work you want.
-            The first 100 professionals get three months free.
+            The first 100 professionals get one month free.
           </p>
           <ul className="mt-6 grid gap-3.5">
             {PERKS.map(({ icon: Icon, title, text }) => (

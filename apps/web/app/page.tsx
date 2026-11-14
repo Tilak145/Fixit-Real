@@ -86,8 +86,23 @@ const PROMISES = [
   },
 ];
 
+// A trial: each service icon gets its own color. A service not listed here
+// keeps the site's blue. The tinted square behind it is the same color at 13%.
+const SERVICE_COLORS: Record<string, string> = {
+  plumbing: "#1565C0",
+  electrical: "#D97706",
+  hvac: "#0891B2",
+  "garage-doors": "#4F46E5",
+  roofing: "#DC2626",
+  "appliance-repair": "#7C3AED",
+  handyman: "#EA580C",
+  cleaning: "#0D9488",
+  "pest-control": "#BE185D",
+  landscaping: "#16A34A",
+};
+
 const PRO_BENEFITS = [
-  "First 100 pros get 3 months free",
+  "First 100 pros get 1 month free",
   "A flat monthly fee, never charged per lead",
   "See the job, location and budget before you quote",
 ];
@@ -124,18 +139,18 @@ export default async function HomePage({
               "linear-gradient(100deg, rgba(10,22,42,.94) 0%, rgba(10,22,42,.82) 45%, rgba(10,22,42,.5) 100%)",
           }}
         />
-        <div className="relative mx-auto grid max-w-[1280px] items-center gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,1fr)_448px] lg:gap-20 lg:py-24">
+        <div className="relative mx-auto grid max-w-[1280px] items-center gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-[minmax(0,1fr)_416px] lg:gap-16 lg:py-6">
           <div className="text-white">
             {chosenCity ? (
-              <p className="mb-5 flex items-center gap-2 text-sm font-bold text-[#F59A3D]">
+              <p className="mb-3 flex items-center gap-2 text-sm font-bold text-[#F59A3D]">
                 <MapPin className="h-4 w-4" aria-hidden="true" />
                 Home services in {chosenCity}
               </p>
             ) : null}
-            <h1 className="mb-5 max-w-[620px] font-display text-[38px] font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-[56px]">
+            <h1 className="mb-3 max-w-[440px] font-display text-[26px] font-bold leading-[1.1] tracking-tight sm:text-[30px] lg:text-[32px]">
               Find a local pro you can trust with your home
             </h1>
-            <p className="mb-6 max-w-[540px] text-base leading-relaxed text-[#DCE6F2] sm:mb-8 sm:text-lg">
+            <p className="mb-5 max-w-[500px] text-[15px] leading-relaxed text-[#DCE6F2] sm:mb-6 sm:text-base">
               Describe your job once, compare itemized quotes from local professionals, and choose the right one.
             </p>
             <ul className="flex flex-wrap gap-x-5 gap-y-2 sm:gap-x-7">
@@ -148,35 +163,44 @@ export default async function HomePage({
             </ul>
           </div>
 
-          <div className="rounded-xl bg-card p-6 text-card-foreground shadow-2xl sm:p-8">
-            <h2 className="mb-1 font-display text-[22px] font-semibold">Get free quotes</h2>
-            <p className="mb-5 text-sm text-muted-foreground">Tell us about your job. It only takes a minute.</p>
+          <div className="rounded-xl bg-card p-5 text-card-foreground shadow-2xl sm:p-6">
+            <h2 className="mb-1 font-display text-xl font-semibold">Get free quotes</h2>
+            <p className="mb-4 text-sm text-muted-foreground">Tell us about your job. It only takes a minute.</p>
             <HeroSearch cities={cities} chosenCity={chosenCity} />
           </div>
         </div>
       </section>
 
       {/* Services */}
-      <section id="services" className="mx-auto w-full max-w-[1280px] scroll-mt-20 px-4 py-14 sm:px-6 lg:py-20">
-        <h2 className="mb-2 font-display text-[28px] font-semibold sm:text-[32px]">What can we help you fix?</h2>
-        <p className="mb-8 text-base text-muted-foreground">Choose a service to get started.</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+      <section id="services" className="mx-auto w-full max-w-[1280px] scroll-mt-20 px-4 py-6 sm:px-6 lg:py-8">
+        <h2 className="mb-0.5 font-display text-xl font-semibold sm:text-[22px]">What can we help you fix?</h2>
+        <p className="mb-4 text-sm text-muted-foreground">Choose a service to get started.</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-2.5 lg:grid-cols-5">
           {categories.map((c) => (
             <Link
               key={c.slug}
               href={`/services/${c.slug}`}
-              className="group flex flex-col rounded-xl border border-border bg-card p-4 outline-none ring-ring transition hover:border-primary hover:shadow-md focus-visible:ring-2 sm:p-5"
+              className="group flex min-h-[52px] items-center gap-2.5 rounded-xl border border-border bg-card px-2.5 py-2 outline-none ring-ring transition hover:border-primary hover:shadow-md focus-visible:ring-2 sm:px-3"
             >
-              <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <ServiceIcon name={c.slug} className="h-7 w-7" aria-hidden="true" />
+              <span
+                className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-primary/10 text-primary"
+                style={
+                  SERVICE_COLORS[c.slug]
+                    ? { color: SERVICE_COLORS[c.slug], backgroundColor: `${SERVICE_COLORS[c.slug]}22` }
+                    : undefined
+                }
+              >
+                <ServiceIcon name={c.slug} className="h-[18px] w-[18px]" aria-hidden="true" />
               </span>
-              <span className="font-display text-[15px] font-semibold text-foreground sm:text-base">{c.name}</span>
-              {/* A service with no pros yet opens its waitlist, so the card still leads somewhere. */}
-              {c.pros > 0 ? (
-                <span className="mt-1 text-[13px] text-muted-foreground">
-                  {c.pros} local {c.pros === 1 ? "pro" : "pros"}
-                </span>
-              ) : null}
+              <span className="flex min-w-0 flex-col">
+                <span className="font-display text-[13px] font-semibold leading-tight text-foreground sm:text-sm">{c.name}</span>
+                {/* A service with no pros yet opens its waitlist, so the card still leads somewhere. */}
+                {c.pros > 0 ? (
+                  <span className="mt-0.5 text-xs text-muted-foreground">
+                    {c.pros} local {c.pros === 1 ? "pro" : "pros"}
+                  </span>
+                ) : null}
+              </span>
             </Link>
           ))}
         </div>
