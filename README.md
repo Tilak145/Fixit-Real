@@ -47,4 +47,5 @@ set the variables listed in `apps/web/.env.example`.
   `spk_payment_subscriptions` table, which no migration here creates. Until a
   direct Stripe integration replaces them, checkout reports that payments are
   not enabled.
-- **Contact details.** `lib/site-contact.ts` still holds placeholders.
+- **Phone number.** `lib/site-contact.ts` has the real support email, but the
+  phone number is still a placeholder.
