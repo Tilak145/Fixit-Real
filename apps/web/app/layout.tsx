@@ -5,6 +5,7 @@ import "./spk-theme.css";
 import { AppShell } from "@/components/app/app-shell";
 import { AppProviders } from "./providers";
 import designTheme from "./spk-design-theme.mjs";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -35,6 +36,7 @@ export default function RootLayout({
         <AppProviders designTheme={designTheme}>
           <AppShell>{children}</AppShell>
         </AppProviders>
+        <SpeedInsights />
       </body>
     </html>
   );
