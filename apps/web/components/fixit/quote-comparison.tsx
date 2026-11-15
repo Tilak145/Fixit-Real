@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check, Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { VerifiedCheck } from "@/components/fixit/pro-card";
 import { formatCents } from "@/lib/commission";
-import { respondToQuote, type JobQuote } from "@/lib/fixit";
+import { DECLINE_REASON_MAX, DECLINE_REASON_MIN, respondToQuote, type JobQuote } from "@/lib/fixit";
 import {
   comparisonRows,
   quoteGaps,
@@ -80,6 +80,96 @@ function Terms({ quote, now }: { quote: JobQuote; now: Date }) {
   );
 }
 
+/** Common reasons, offered as a start so declining stays one tap and a word. */
+const DECLINE_REASONS = [
+  "The price is too high",
+  "I need it done sooner",
+  "I chose another professional",
+  "I no longer need the work",
+];
+
+/**
+ * Why the customer is declining. A decline is not sent without a reason: the
+ * professional reads it beside their quote, and it is what lets them come back
+ * with a better price instead of guessing.
+ */
+function DeclineForm({
+  quote,
+  pending,
+  error,
+  onCancel,
+  onSubmit,
+}: {
+  quote: JobQuote;
+  pending: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onSubmit: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState("");
+  const ready = reason.trim().length >= DECLINE_REASON_MIN;
+  const fieldId = "decline-reason-" + quote.id;
+  return (
+    <form
+      className="mt-3 rounded-lg border border-border bg-background p-3.5"
+      data-testid="decline-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (ready && !pending) onSubmit(reason.trim());
+      }}
+    >
+      <label htmlFor={fieldId} className="block text-[13px] font-bold">
+        Why are you declining {quote.provider_name ?? "this pro"}’s {formatCents(quote.amount_cents)} price?
+      </label>
+      <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+        The professional will see your reason, and may send you a new price.
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {DECLINE_REASONS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => setReason(option)}
+            aria-pressed={reason === option}
+            className={
+              "rounded-full border px-3 py-1.5 text-[12.5px] font-semibold " +
+              (reason === option
+                ? "border-primary bg-primary text-white"
+                : "border-border text-foreground/80 hover:bg-muted")
+            }
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+      <textarea
+        id={fieldId}
+        value={reason}
+        onChange={(event) => setReason(event.target.value)}
+        maxLength={DECLINE_REASON_MAX}
+        rows={2}
+        required
+        placeholder="Pick a reason above or write your own"
+        className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-[13px]"
+        data-testid="decline-reason"
+      />
+      {error ? (
+        <p role="alert" className="mt-1 text-[12.5px] text-destructive">
+          {error}
+        </p>
+      ) : null}
+      <div className="mt-2 flex flex-wrap gap-2">
+        <Button type="submit" size="sm" variant="destructive" disabled={!ready || pending} data-testid="confirm-decline">
+          {pending ? "Saving…" : "Decline this price"}
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={onCancel} disabled={pending}>
+          Keep it
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 /**
  * The prices on one request, side by side.
  *
@@ -92,14 +182,33 @@ function Terms({ quote, now }: { quote: JobQuote; now: Date }) {
 export function QuoteComparison({ quotes }: { quotes: JobQuote[] }) {
   const queryClient = useQueryClient();
   const now = useMemo(() => new Date(), []);
+  // The quote the customer is in the middle of declining, if any.
+  const [decliningId, setDecliningId] = useState<string | null>(null);
   const respond = useMutation({
-    mutationFn: (input: { quoteId: string; response: "accepted" | "declined" }) => respondToQuote(input),
+    mutationFn: (input: { quoteId: string; response: "accepted" | "declined"; reason?: string }) =>
+      respondToQuote(input),
     onSuccess: async () => {
+      setDecliningId(null);
       await queryClient.invalidateQueries({ queryKey: ["my-requests"] });
     },
   });
 
   if (quotes.length === 0) return null;
+
+  const declining = quotes.find((quote) => quote.id === decliningId && quote.status === "sent") ?? null;
+  const declineForm = declining ? (
+    <DeclineForm
+      key={declining.id}
+      quote={declining}
+      pending={respond.isPending}
+      error={respond.isError ? (respond.error as Error).message : null}
+      onCancel={() => {
+        respond.reset();
+        setDecliningId(null);
+      }}
+      onSubmit={(reason) => respond.mutate({ quoteId: declining.id, response: "declined", reason })}
+    />
+  ) : null;
 
   if (quotes.length === 1) {
     const quote = quotes[0];
@@ -139,7 +248,12 @@ export function QuoteComparison({ quotes }: { quotes: JobQuote[] }) {
           Only one price so far. More local pros can quote this job, and each price will appear here
           to compare side by side.
         </p>
-        {quote.status === "sent" ? (
+        {quote.status === "declined" && quote.decline_reason ? (
+          <p className="mt-3 text-[12.5px] text-muted-foreground" data-testid="decline-reason-shown">
+            Reason given: {quote.decline_reason}
+          </p>
+        ) : null}
+        {quote.status === "sent" && !declining ? (
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
               size="sm"
@@ -152,12 +266,19 @@ export function QuoteComparison({ quotes }: { quotes: JobQuote[] }) {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => respond.mutate({ quoteId: quote.id, response: "declined" })}
+              onClick={() => setDecliningId(quote.id)}
               disabled={respond.isPending}
+              data-testid="decline-quote"
             >
               Decline
             </Button>
           </div>
+        ) : null}
+        {declineForm}
+        {respond.isError && !declining ? (
+          <p role="alert" className="mt-2 text-[12.5px] text-destructive">
+            {(respond.error as Error).message}
+          </p>
         ) : null}
       </div>
     );
@@ -239,8 +360,12 @@ export function QuoteComparison({ quotes }: { quotes: JobQuote[] }) {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => respond.mutate({ quoteId: quote.id, response: "declined" })}
+                        onClick={() => {
+                          respond.reset();
+                          setDecliningId(quote.id);
+                        }}
                         disabled={respond.isPending}
+                        data-testid="decline-quote"
                       >
                         Decline
                       </Button>
@@ -250,7 +375,12 @@ export function QuoteComparison({ quotes }: { quotes: JobQuote[] }) {
                       <Check className="h-3.5 w-3.5" aria-hidden="true" /> Chosen
                     </span>
                   ) : (
-                    <span className="text-[12.5px] text-muted-foreground">Not chosen</span>
+                    <span className="block text-[12.5px] text-muted-foreground">
+                      Not chosen
+                      {quote.decline_reason ? (
+                        <span className="mt-0.5 block text-[12px]">Reason given: {quote.decline_reason}</span>
+                      ) : null}
+                    </span>
                   )}
                 </td>
               ))}
@@ -258,6 +388,7 @@ export function QuoteComparison({ quotes }: { quotes: JobQuote[] }) {
           </tfoot>
         </table>
       </div>
+      {declineForm}
       <p className="mt-2 flex items-start gap-1.5 text-[12px] text-muted-foreground">
         <AlertTriangle className="mt-0.5 h-3 w-3 flex-none text-accent" aria-hidden="true" />
         <span>
@@ -265,7 +396,7 @@ export function QuoteComparison({ quotes }: { quotes: JobQuote[] }) {
           others and releases your contact details to that professional.
         </span>
       </p>
-      {respond.isError ? (
+      {respond.isError && !declining ? (
         <p role="alert" className="mt-2 text-[12.5px] text-destructive">
           {(respond.error as Error).message}
         </p>

@@ -64,6 +64,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return;
     }
     let active = true;
+    // An emailed link that was already used, or has run out, comes back with
+    // only an error in the address. Left alone the person sees the home page
+    // and no explanation, so send them to where they can ask for a new one.
+    if (
+      /[#&]error_code=otp_expired/u.test(window.location.hash) &&
+      window.location.pathname !== "/forgot-password"
+    ) {
+      window.location.replace("/forgot-password?expired=1");
+      return;
+    }
     void supabase.auth.getSession().then(({ data, error }) => {
       if (!active) return;
       setSession(error ? null : data.session);
@@ -73,8 +83,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setSession(null);
       setStatus("anonymous");
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
+      // A password-reset link signs the person in wherever it lands. When the
+      // link's own destination is not on the allowed list, the sign-in service
+      // sends them to the home page instead, and they were never asked for a
+      // new password. Whatever page they arrive on, take them to that step.
+      if (event === "PASSWORD_RECOVERY" && window.location.pathname !== "/reset-password") {
+        window.location.replace("/reset-password");
+        return;
+      }
       setSession(nextSession);
       setStatus(nextSession ? "authenticated" : "anonymous");
     });

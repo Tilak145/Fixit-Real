@@ -292,6 +292,20 @@ function ContactDetails({ label, phone, email, address }: { label: string; phone
 }
 
 /** The heading that opens every section, so the console reads like a product. */
+/**
+ * Why the customer declined this pro's price, in the customer's words. Shown
+ * beside the declined quote so the next price answers the actual objection.
+ * Quotes declined before reasons were collected have none, and say nothing.
+ */
+function DeclineReason({ reason }: { reason?: string | null }) {
+  if (!reason) return null;
+  return (
+    <span className="basis-full text-[12.5px] text-foreground/80" data-testid="quote-decline-reason">
+      <strong className="font-bold">Customer’s reason:</strong> “{reason}”
+    </span>
+  );
+}
+
 function SectionHeading({ title, description }: { title: string; description: string }) {
   return (
     <div className="mb-6">
@@ -1257,9 +1271,12 @@ export function ProviderDashboard() {
                   Quote accepted · {formatCents(quote!.amount_cents)} · contact details below
                 </span>
               ) : quoteStatus === "declined" ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FDECEA] px-2.5 py-1 text-[11.5px] font-bold text-[#D93025]">
-                  Quote declined · {formatCents(quote!.amount_cents)} · send a new price
-                </span>
+                <>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FDECEA] px-2.5 py-1 text-[11.5px] font-bold text-[#D93025]">
+                    Quote declined · {formatCents(quote!.amount_cents)} · send a new price
+                  </span>
+                  <DeclineReason reason={quote!.decline_reason} />
+                </>
               ) : contactUnlocked ? (
                 // Already unlocked without a quote: a booked visit, or a guest
                 // request that has no customer account to accept a price.
@@ -1377,9 +1394,12 @@ export function ProviderDashboard() {
                 Quote accepted · {formatCents(quote!.amount_cents)}
               </span>
             ) : quoteStatus === "declined" ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FDECEA] px-2.5 py-1 text-[11.5px] font-bold text-[#D93025]">
-                Quote declined · {formatCents(quote!.amount_cents)} · send a new price
-              </span>
+              <>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FDECEA] px-2.5 py-1 text-[11.5px] font-bold text-[#D93025]">
+                  Quote declined · {formatCents(quote!.amount_cents)} · send a new price
+                </span>
+                <DeclineReason reason={quote!.decline_reason} />
+              </>
             ) : null}
             <button
               onClick={() => {
@@ -1664,6 +1684,11 @@ export function ProviderDashboard() {
                     {news.customer_name ?? "A customer"} {news.status === "accepted" ? "accepted" : "declined"} your{" "}
                     {formatCents(news.amount_cents)} quote
                     {news.status === "accepted" ? ". Their contact details are now in your leads." : "."}
+                    {news.status === "declined" && news.decline_reason ? (
+                      <span className="mt-0.5 block font-normal" data-testid="news-decline-reason">
+                        Reason: “{news.decline_reason}”
+                      </span>
+                    ) : null}
                   </span>
                   <button
                     type="button"

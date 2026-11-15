@@ -412,6 +412,8 @@ export interface JobQuote {
   status: QuoteStatus;
   created_at: string;
   responded_at: string | null;
+  /** Why the customer declined, in their words. Cleared when a new price is sent. */
+  decline_reason: string | null;
   provider_name?: string | null;
   provider_verified?: boolean;
 }
@@ -421,7 +423,7 @@ export interface JobQuote {
  * one literal, not a concatenation, so the typed client still reads the columns
  * from it.
  */
-export const QUOTE_FIELDS = "id,quote_request_id,provider_id,amount_cents,labour_cents,materials_cents,service_call_cents,emergency_fee_cents,other_cents,other_label,earliest_start,completion_note,warranty,payment_terms,valid_until,note,status,created_at,responded_at";
+export const QUOTE_FIELDS = "id,quote_request_id,provider_id,amount_cents,labour_cents,materials_cents,service_call_cents,emergency_fee_cents,other_cents,other_label,earliest_start,completion_note,warranty,payment_terms,valid_until,note,status,created_at,responded_at,decline_reason";
 
 export interface QuoteDraft {
   /** The parts of the price, in whole cents. */
@@ -496,16 +498,32 @@ export async function sendQuote(input: { requestId: string; draft: QuoteDraft })
   if (error) throw new Error(error.message);
 }
 
-/** The customer accepts or declines the price a professional sent. */
+/** The shortest reason worth sending; the database enforces the same floor. */
+export const DECLINE_REASON_MIN = 3;
+export const DECLINE_REASON_MAX = 500;
+
+/**
+ * The customer accepts or declines the price a professional sent. A decline
+ * carries a reason, which the professional reads beside their quote.
+ */
 export async function respondToQuote(input: {
   quoteId: string;
   response: "accepted" | "declined";
+  reason?: string;
 }): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) throw new Error("Quoting is not connected yet.");
+  const reason = input.reason?.trim() ?? "";
+  if (input.response === "declined" && reason.length < DECLINE_REASON_MIN) {
+    throw new Error("Please say why you are declining, so the professional knows.");
+  }
   const { error } = await supabase
     .from("quotes")
-    .update({ status: input.response })
+    .update(
+      input.response === "declined"
+        ? { status: "declined", decline_reason: reason.slice(0, DECLINE_REASON_MAX) }
+        : { status: "accepted" },
+    )
     .eq("id", input.quoteId)
     .eq("status", "sent");
   if (error) throw new Error(error.message);
@@ -532,6 +550,7 @@ export interface QuoteResponseNews {
   status: "accepted" | "declined";
   amount_cents: number;
   responded_at: string;
+  decline_reason: string | null;
   customer_name: string | null;
   category_slug: string | null;
 }
@@ -557,7 +576,7 @@ export async function listQuoteResponseNews(): Promise<QuoteResponseNews[]> {
   }
   const { data: quotes, error } = await supabase
     .from("quotes")
-    .select("id,quote_request_id,status,amount_cents,responded_at")
+    .select("id,quote_request_id,status,amount_cents,responded_at,decline_reason")
     .in("status", ["accepted", "declined"])
     .gt("responded_at", seen.quote_responses_seen_at as string)
     .order("responded_at", { ascending: false })
@@ -577,6 +596,7 @@ export async function listQuoteResponseNews(): Promise<QuoteResponseNews[]> {
       status: quote.status as "accepted" | "declined",
       amount_cents: quote.amount_cents as number,
       responded_at: quote.responded_at as string,
+      decline_reason: (quote.decline_reason as string | null) ?? null,
       customer_name: (request?.customer_name as string | undefined) ?? null,
       category_slug: (request?.category_slug as string | undefined) ?? null,
     };

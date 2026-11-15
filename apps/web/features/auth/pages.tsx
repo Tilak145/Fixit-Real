@@ -260,6 +260,11 @@ export function ForgotPasswordPage() {
   const auth = useAuth();
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
+  // Set when a used or expired reset link sent the person back here.
+  const [expired, setExpired] = useState(false);
+  useEffect(() => {
+    setExpired(new URLSearchParams(window.location.search).get("expired") === "1");
+  }, []);
   if (auth.status === "loading") return <LoadingAuth />;
   if (auth.status === "unavailable") return <UnavailableAuth />;
 
@@ -268,11 +273,17 @@ export function ForgotPasswordPage() {
     setPending(true);
     const result = await auth.requestPasswordReset(email);
     setPending(false);
+    if (result.ok) setExpired(false);
     result.ok ? toast.success("If this email is registered, you will receive a reset message.") : toast.error(result.message);
   };
 
   return (
     <AuthFrame title="Reset password" description="We will send a reset link to your email." footer={<a className="text-primary hover:underline" href="/login">Back to sign in</a>}>
+      {expired ? (
+        <p role="alert" className="mb-4 rounded-md bg-[#FFF4E5] px-3 py-2 text-sm text-[#B26A00]" data-testid="reset-link-expired">
+          That reset link has expired or was already used. Each link works once. Enter your email to get a new one.
+        </p>
+      ) : null}
       <form className="space-y-4" onSubmit={(event) => void submit(event)}>
         <div className="space-y-2"><Label htmlFor="reset-email">Email</Label><Input id="reset-email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></div>
         <Button className="w-full" type="submit" disabled={pending}>{pending ? "Sending…" : "Send reset email"}</Button>
@@ -287,6 +298,19 @@ export function ResetPasswordPage() {
   const [pending, setPending] = useState(false);
   if (auth.status === "loading") return <LoadingAuth />;
   if (auth.status === "unavailable") return <UnavailableAuth />;
+  // A new password can only be saved by someone the reset link signed in. With
+  // no sign-in the form could only fail, so say what happened instead.
+  if (auth.status === "anonymous") {
+    return (
+      <AuthFrame
+        title="This reset link is no longer valid"
+        description="It has expired or was already used. Each link works once."
+        footer={<a className="text-primary hover:underline" href="/login">Back to sign in</a>}
+      >
+        <Button asChild className="w-full"><a href="/forgot-password">Send a new reset link</a></Button>
+      </AuthFrame>
+    );
+  }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
