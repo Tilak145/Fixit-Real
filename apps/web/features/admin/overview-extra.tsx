@@ -61,7 +61,7 @@ export function NeedsAttention({ onGo }: { onGo: (key: string) => void }) {
   if (p.flaggedLeads > 0)
     rows.push({ key: "flags", label: `${p.flaggedLeads} request${p.flaggedLeads === 1 ? "" : "s"} held back as suspicious`, detail: "Withheld from professionals until checked.", to: "lead_integrity", severe: false });
   if (p.unverifiedJobs > 0)
-    rows.push({ key: "jobs", label: `${p.unverifiedJobs} completed job${p.unverifiedJobs === 1 ? "" : "s"} awaiting value check`, detail: "Confirm the job value before commission.", to: "commissions", severe: false });
+    rows.push({ key: "jobs", label: `${p.unverifiedJobs} completed job${p.unverifiedJobs === 1 ? "" : "s"} awaiting value check`, detail: "Confirm the reported job value.", to: "subscriptions", severe: false });
 
   if (rows.length === 0) {
     return (

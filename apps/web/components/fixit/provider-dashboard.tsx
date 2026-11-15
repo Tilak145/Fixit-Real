@@ -51,8 +51,7 @@ import {
   type RequestMedia,
 } from "@/lib/fixit";
 import { QuoteComposer } from "@/components/fixit/quote-form";
-import { CommissionSection, CommissionTerms } from "@/components/fixit/commission-section";
-import { formatCents, getCommissionSettings, listMyCommissions, listMyLeadUsage } from "@/lib/commission";
+import { formatCents } from "@/lib/commission";
 import { contactDetailsReleased, quoteState } from "@/lib/quote-release";
 import { estimateJob, formatEstimateRange } from "@/lib/fixit-estimate";
 import { AvailabilityCalendar } from "@/components/fixit/availability-calendar";
@@ -141,7 +140,6 @@ type Section =
   | "jobs"
   | "availability"
   | "reviews"
-  | "commission"
   | "profile"
   | "plan"
   | "support";
@@ -739,23 +737,6 @@ export function ProviderDashboard() {
     staleTime: 60_000,
   });
 
-  // The dashboard headline figures reuse the same commission reads as the
-  // Commissions section, so the two can never disagree.
-  const leadUsage = useQuery({
-    queryKey: ["my-lead-usage"],
-    enabled: !!provider.data,
-    queryFn: listMyLeadUsage,
-  });
-  const myCommissions = useQuery({
-    queryKey: ["my-commissions", provider.data?.id],
-    enabled: !!provider.data,
-    queryFn: () => listMyCommissions(provider.data!.id),
-  });
-  const commissionSettings = useQuery({
-    queryKey: ["commission-settings"],
-    queryFn: getCommissionSettings,
-  });
-
   // A logo can be added or replaced from the profile without going back
   // through onboarding. It is stored first, then the provider row is pointed
   // at the new public address.
@@ -889,29 +870,14 @@ export function ProviderDashboard() {
     const all = leads.data ?? [];
     const available = all.filter((l) => !l.claimed_by);
     const upcoming = (appointments.data ?? []).filter((a) => a.status === "scheduled");
-    const planKey = provider.data?.plan ?? "default";
-    const settings =
-      (commissionSettings.data ?? []).find((c) => c.plan_key === planKey) ??
-      (commissionSettings.data ?? []).find((c) => c.plan_key === "default");
-    const usage = (leadUsage.data ?? [])[0];
-    const included = settings?.included_leads ?? 0;
-    const leadsUsed = usage?.total ?? 0;
-    const pending = (myCommissions.data ?? [])
-      .filter((c) => c.status === "pending" || c.status === "payable")
-      .reduce((sum, c) => sum + c.amount_cents, 0);
     return {
       newLeads: available.length,
       booked: myLeads.length,
       upcoming: upcoming.length,
       rating: provider.data?.rating ?? 0,
       reviewCount: provider.data?.review_count ?? 0,
-      leadsUsed,
-      leadsRemaining: Math.max(included - leadsUsed, 0),
-      included,
-      pendingCents: pending,
-      rateBps: settings?.commission_rate_bps ?? null,
     };
-  }, [leads.data, myLeads.length, appointments.data, provider.data, leadUsage.data, myCommissions.data, commissionSettings.data]);
+  }, [leads.data, myLeads.length, appointments.data, provider.data]);
 
   // The budget the pro is willing to work in, resolved from the dropdown. It
   // and the funnel below sit above the early returns so the same hooks run on
@@ -1034,7 +1000,6 @@ export function ProviderDashboard() {
     { key: "jobs", icon: Briefcase, label: "Jobs & Appointments", badge: String(stats.upcoming) },
     { key: "availability", icon: CalendarClock, label: "Availability" },
     { key: "reviews", icon: Star, label: "Reviews" },
-    { key: "commission", icon: Percent, label: "Commissions" },
     { key: "plan", icon: CreditCard, label: "Payments & Plan" },
     { key: "profile", icon: Settings, label: "Profile & Settings" },
     { key: "support", icon: LifeBuoy, label: "Support" },
@@ -1053,7 +1018,6 @@ export function ProviderDashboard() {
       description: "The days and hours you work, and whether we send you emergency requests.",
     },
     reviews: { title: "Reviews", description: "What your customers say about your work." },
-    commission: { title: "Commissions", description: "Report completed jobs and see what you owe." },
     plan: { title: "Payments & Plan", description: "Your subscription, invoices and plan options." },
     profile: { title: "Profile & Settings", description: "How your business appears to customers." },
     support: { title: "Support", description: "We are here to help." },
@@ -1422,9 +1386,6 @@ export function ProviderDashboard() {
           <strong className="mt-1.5 block font-display text-[15px] text-white">
             {PLAN_LABELS[pro.plan] ?? pro.plan}
           </strong>
-          <span className="mt-1 block text-[11.5px] text-[#B9C8DC]">
-            {stats.leadsRemaining} of {stats.included} included leads left
-          </span>
           <button
             onClick={() => setSection("plan")}
             className="mt-3 h-9 w-full rounded-lg bg-primary text-xs font-bold text-white hover:bg-primary/90"
@@ -1689,14 +1650,6 @@ export function ProviderDashboard() {
                   onClick={() => setSection("jobs")}
                 />
                 <StatCard
-                  icon={Percent}
-                  tone="green"
-                  value={String(stats.leadsRemaining)}
-                  label="Included leads left"
-                  sub={`${stats.leadsUsed} used of ${stats.included} this month`}
-                  onClick={() => setSection("commission")}
-                />
-                <StatCard
                   icon={Star}
                   tone="amber"
                   value={stats.rating.toFixed(1)}
@@ -1707,28 +1660,6 @@ export function ProviderDashboard() {
               </div>
 
               <div className="mb-6 flex flex-wrap gap-4">
-                <div className="flex min-w-[280px] flex-1 items-center gap-4 rounded-2xl border border-border bg-gradient-to-br from-[#0D2C54] to-[#123A6B] p-5 text-white shadow-sm">
-                  <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-white/10">
-                    <Percent className="h-5 w-5 text-[#F59A3D]" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[12px] font-semibold uppercase tracking-wide text-[#B9C8DC]">
-                      Pending commissions
-                    </span>
-                    <strong className="block font-display text-[24px] font-bold tabular-nums">
-                      {formatCents(stats.pendingCents)}
-                    </strong>
-                    <span className="block text-[11.5px] text-[#B9C8DC]">
-                      {stats.rateBps != null ? `${(stats.rateBps / 100).toFixed(0)}% of completed job subtotals` : "No rate set"}
-                    </span>
-                  </span>
-                  <button
-                    onClick={() => setSection("commission")}
-                    className="ml-auto flex-none rounded-lg bg-white/10 px-3.5 py-2 text-[12.5px] font-bold hover:bg-white/20"
-                  >
-                    View
-                  </button>
-                </div>
                 <div className="flex min-w-[280px] flex-1 items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
                   <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-[#E9F1FB] text-[#1565C0]">
                     <MessagesSquare className="h-5 w-5" aria-hidden="true" />
@@ -2449,11 +2380,6 @@ export function ProviderDashboard() {
             </div>
           )}
 
-          {section === "commission" && (
-            <div className="space-y-5">
-              <CommissionSection plan={pro.plan} providerId={pro.id} />
-            </div>
-          )}
           {section === "plan" && (
             <div className="space-y-5">
               {(() => {
@@ -2504,7 +2430,6 @@ export function ProviderDashboard() {
                 )}
               </Panel>
 
-              <CommissionTerms planKey={pro.plan} className="rounded-lg bg-[#F7F9FC] p-4" />
               <div className="grid gap-5 sm:grid-cols-3">
                 {PLAN_ORDER.map((plan) => {
                   const on = pro.plan === plan;

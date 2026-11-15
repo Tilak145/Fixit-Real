@@ -22,7 +22,6 @@ import { FixItLogo } from "@/components/fixit/logo";
 import { useCities } from "@/components/fixit/city-select";
 import { AddressInput } from "@/components/fixit/address-input";
 import { PAID_PLANS } from "@/features/plans";
-import { CommissionTerms } from "@/components/fixit/commission-section";
 
 const CATEGORIES = [
   { slug: "plumbing", name: "Plumbing", emoji: "🔧" },
@@ -729,7 +728,6 @@ export function OnboardingWizard() {
             <p className="mb-3 text-[12.5px] text-muted-foreground">
               Unlimited lead access in your area, plus the placement and tools to win the work.
             </p>
-            <CommissionTerms className="mb-5 rounded-lg bg-[#F7F9FC] p-3.5" />
             {foundingSlots !== null && foundingSlots > 0 ? (
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-[#F57C00] bg-[#FFF7EC] p-4">
                 <div className="min-w-0">

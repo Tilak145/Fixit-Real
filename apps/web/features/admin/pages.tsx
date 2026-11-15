@@ -22,7 +22,7 @@ import {
   UserSearch,
   UsersRound,
   Wrench,
-  Percent,
+  CreditCard,
   Flag,
 } from "lucide-react";
 
@@ -57,7 +57,7 @@ import { AdminOverview } from "./overview";
 import { AdminTeam } from "./team";
 import { AdminStaffAccess } from "./staff-access";
 import { AdminActivity } from "./activity";
-import { AdminCommissions } from "./commissions";
+import { AdminSubscriptions } from "./subscriptions";
 import { AdminLeadIntegrity } from "./lead-integrity";
 import { AdminCustomerLookup } from "./customer-lookup";
 import { AdminTrialReminders } from "./trial-reminders";
@@ -546,7 +546,7 @@ const SECTION_HINT: Record<string, string> = {
   messages: "Customer and pro conversations",
   service_categories: "The trades customers choose from",
   service_cities: "The cities FixIt serves, offered to customers and pros",
-  commissions: "Commission terms, charges, disputes and the lead ledger",
+  subscriptions: "Pro subscriptions from Stripe, job verification and fraud review",
   lead_integrity: "Fake, duplicate and reported leads waiting on a decision",
   customer_lookup: "Type a customer number to see everything that customer has done",
   trial_reminders: "Free periods ending soon, and whether each pro has been told",
@@ -562,7 +562,7 @@ const SECTION_HINT: Record<string, string> = {
 // tables happen to be named.
 const NAV_GROUPS: { title: string; keys: string[] }[] = [
   { title: "Marketplace", keys: ["dispatch", "providers", "pro_lookup", "customer_lookup", "quote_requests", "lead_integrity", "appointments", "reviews", "messages"] },
-  { title: "Revenue", keys: ["commissions", "trial_reminders"] },
+  { title: "Revenue", keys: ["subscriptions", "trial_reminders"] },
   { title: "Settings", keys: ["service_waitlist", "service_categories", "service_cities", "accounts", "team", "activity"] },
 ];
 
@@ -611,7 +611,7 @@ export function AdminPage() {
   // A section the role may not see must not stay open when access changes.
   useEffect(() => {
     // A section the role may not see must not stay open when the role changes.
-    if (["team", "commissions", "trial_reminders", "customer_lookup", "accounts", "service_waitlist"].includes(section) && role.data && !isOwner) {
+    if (["team", "subscriptions", "trial_reminders", "customer_lookup", "accounts", "service_waitlist"].includes(section) && role.data && !isOwner) {
       setSection("overview");
     }
   }, [isOwner, role.data, section]);
@@ -667,12 +667,12 @@ export function AdminPage() {
 
   // Staff run the marketplace. The owner alone sees the screens that decide
   // who works here, reach every account, or change the site's settings.
-  const OWNER_ONLY = new Set(["commissions", "trial_reminders", "customer_lookup", "accounts", "team", "service_cities", "service_categories", "service_waitlist"]);
+  const OWNER_ONLY = new Set(["subscriptions", "trial_reminders", "customer_lookup", "accounts", "team", "service_cities", "service_categories", "service_waitlist"]);
   // Until the saved list arrives every screen stays as it was, so the menu
   // never blinks or hides pages from someone whose access is still loading.
   const available = new Set([
     "overview",
-    "commissions",
+    "subscriptions",
     "lead_integrity",
     "customer_lookup",
     "trial_reminders",
@@ -688,13 +688,13 @@ export function AdminPage() {
     if (!isOwner && granted && !granted.has(key)) available.delete(key);
   }
   const navigation = Object.fromEntries(
-    ["overview", "dispatch", "service_waitlist", "pro_lookup", "commissions", "trial_reminders", "lead_integrity", "customer_lookup", ...adminResources.map((resource) => resource.table), "accounts", "team", "activity"]
+    ["overview", "dispatch", "service_waitlist", "pro_lookup", "subscriptions", "trial_reminders", "lead_integrity", "customer_lookup", ...adminResources.map((resource) => resource.table), "accounts", "team", "activity"]
       .filter((key) => available.has(key))
       .map((key) => {
         const resource = adminResources.find((item) => item.table === key);
         const label =
           key === "overview" ? "Overview"
-            : key === "commissions" ? "Commissions"
+            : key === "subscriptions" ? "Subscriptions"
             : key === "lead_integrity" ? "Lead integrity"
             : key === "customer_lookup" ? "Find customer"
             : key === "trial_reminders" ? "Trial reminders"
@@ -707,7 +707,7 @@ export function AdminPage() {
                   : resource?.label ?? key;
         const icon =
           key === "overview" ? LayoutDashboard
-            : key === "commissions" ? Percent
+            : key === "subscriptions" ? CreditCard
             : key === "lead_integrity" ? Flag
             : key === "customer_lookup" ? UserSearch
             : key === "trial_reminders" ? Crown
@@ -829,7 +829,7 @@ export function AdminPage() {
 
         <main className="grid flex-1 content-start gap-6 p-5">
           {section === "overview" ? <AdminOverview onOpen={goTo} onGo={goTo} /> : null}
-          {section === "commissions" && isOwner ? <AdminCommissions /> : null}
+          {section === "subscriptions" && isOwner ? <AdminSubscriptions /> : null}
           {section === "lead_integrity" ? <AdminLeadIntegrity /> : null}
           {section === "customer_lookup" && isOwner ? <AdminCustomerLookup /> : null}
           {section === "trial_reminders" && isOwner ? <AdminTrialReminders /> : null}

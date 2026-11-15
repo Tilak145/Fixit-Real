@@ -39,7 +39,7 @@ interface DirectoryAccount {
 
 const ROLE_LABEL: Record<Role, string> = { admin: "Owner", manager: "Staff" };
 const ROLE_HINT: Record<Role, string> = {
-  admin: "Owner: full access, including who works here, commissions, mail and every account",
+  admin: "Owner: full access, including who works here, subscriptions, mail and every account",
   manager: "Staff: exactly the screens you switch on below",
 };
 

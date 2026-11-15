@@ -35,7 +35,6 @@ export interface OverviewProblems {
 }
 
 export interface OverviewMoney {
-  commissionCents: number;
   pendingJobs: number;
   subscriptions: number;
   trialEnding: number;

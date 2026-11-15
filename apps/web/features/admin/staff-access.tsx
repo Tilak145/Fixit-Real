@@ -182,7 +182,7 @@ export function AdminStaffAccess() {
           <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
           <p>
             Owners ({owners.map((row) => access.data?.emails.get(row.user_id) ?? row.user_id).join(", ") || "none"})
-            always have every screen. Commissions, customer look-up, trial reminders, accounts, cities, services,
+            always have every screen. Subscriptions, customer look-up, trial reminders, accounts, cities, services,
             the trade waitlist and this team page are owner-only and cannot be handed out.
           </p>
         </div>
