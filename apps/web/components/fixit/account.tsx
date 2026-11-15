@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { CalendarDays, Check, ClipboardList, Copy, Hash, LogOut, MessageSquare, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/fixit/site-chrome";
+import { VerifiedCheck } from "@/components/fixit/pro-card";
 import { LoadingState, ErrorState, EmptyState } from "@/components/app/states";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,7 +89,12 @@ function RequestCard({ request }: { request: MyRequest }) {
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{request.description}</p>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
         <span>{request.city}</span>
-        {request.provider_name ? <span>Pro: {request.provider_name}</span> : null}
+        {request.provider_name ? (
+          <span>
+            Pro: {request.provider_name}
+            {request.provider_verified ? <VerifiedCheck /> : null}
+          </span>
+        ) : null}
       </div>
       <p className="mt-3 border-t border-border pt-3 text-[12.5px] text-muted-foreground">
         {status.hint}

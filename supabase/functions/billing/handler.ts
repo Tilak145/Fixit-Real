@@ -340,6 +340,9 @@ export function createHandler(deps: Deps): (request: Request) => Promise<Respons
         line_items: [{ price: chosen.price.id, quantity: 1 }],
         success_url: withSessionId(base + safePath(body.successPath, "/pro/dashboard")),
         cancel_url: base + safePath(body.cancelPath, "/pro/dashboard"),
+        // Adds the "Add promotion code" box to Stripe's payment page, so a coupon
+        // made in the Stripe dashboard can be handed out as a code.
+        allow_promotion_codes: true,
         metadata: label,
         // A free month that is still running carries into the paid plan.
         subscription_data: { metadata: label, trial_end: trialEndFor(provider?.trial_ends_at, now()) },

@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/app/states";
 import { requireSupabase } from "@/lib/supabase";
+import { stateFromAddress, stateInfo } from "@/lib/states";
 import { documentSignedUrl } from "@/lib/fixit";
 import { StatusPill } from "./ui";
 import { Coverage, NeedsAttention, RecentActivity, ThisWeek } from "./overview-extra";
@@ -503,6 +504,18 @@ export function AdminOverview({ onOpen, onGo }: { onOpen: (table: string) => voi
                           <span className="text-muted-foreground">not given</span>
                         )}
                         <StatusPill value={licenseStatus} />
+                        {/* Free: opens the state's licence search so staff can
+                            check the number themselves before pressing Confirm. */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            window.open(stateInfo(stateFromAddress(String(pro.address ?? ""))).licenseLookupUrl, "_blank", "noopener,noreferrer")
+                          }
+                        >
+                          <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                          Look up
+                        </Button>
                         {pro.license_note ? (
                           <span className="text-muted-foreground">{String(pro.license_note)}</span>
                         ) : null}
@@ -528,7 +541,7 @@ export function AdminOverview({ onOpen, onGo }: { onOpen: (table: string) => voi
                           size="sm"
                           onClick={() =>
                             window.open(
-                              "https://businesssearch.ohiosos.gov/",
+                              stateInfo(stateFromAddress(String(pro.address ?? ""))).registrationLookupUrl,
                               "_blank",
                               "noopener,noreferrer",
                             )

@@ -33,6 +33,8 @@ export interface ProSummary {
   status: string;
   /** Search placement bought with the plan; lower comes first among equals. */
   placement?: number;
+  /** FixIt staff checked both the licence and the insurance. */
+  verified?: boolean;
 }
 
 /**
@@ -127,6 +129,8 @@ export interface MyRequest {
   /** The customer flagged this job as one that cannot wait. */
   is_emergency?: boolean;
   provider_name?: string | null;
+  /** FixIt staff checked this pro's licence and insurance. */
+  provider_verified?: boolean;
   /** The prices professionals have sent on this request, newest first. */
   quotes?: JobQuote[];
 }
@@ -155,9 +159,17 @@ export async function listMyRequests(): Promise<MyRequest[]> {
     .select("id,business_name")
     .in("id", claimedIds);
   const nameById = new Map((providers ?? []).map((row) => [row.id as string, row.business_name as string]));
+  const { data: checks } = await supabase
+    .from("provider_trust_evidence")
+    .select("provider_id,license_checked,insurance_checked")
+    .in("provider_id", claimedIds);
+  const verifiedIds = new Set(
+    (checks ?? []).filter((row) => row.license_checked && row.insurance_checked).map((row) => row.provider_id as string),
+  );
   const withNames = rows.map((row) => ({
     ...row,
     provider_name: row.claimed_by ? nameById.get(row.claimed_by) ?? null : null,
+    provider_verified: row.claimed_by ? verifiedIds.has(row.claimed_by) : false,
   }));
 
   // The quotes on these requests. Row Level Security returns the customer's own,
@@ -172,7 +184,11 @@ export async function listMyRequests(): Promise<MyRequest[]> {
   const quotesByRequest = new Map<string, JobQuote[]>();
   for (const row of (quotes ?? []) as JobQuote[]) {
     const list = quotesByRequest.get(row.quote_request_id) ?? [];
-    list.push({ ...row, provider_name: nameById.get(row.provider_id) ?? null });
+    list.push({
+      ...row,
+      provider_name: nameById.get(row.provider_id) ?? null,
+      provider_verified: verifiedIds.has(row.provider_id),
+    });
     quotesByRequest.set(row.quote_request_id, list);
   }
   return withNames.map((row) => ({ ...row, quotes: quotesByRequest.get(row.id) ?? [] }));
@@ -391,6 +407,7 @@ export interface JobQuote {
   created_at: string;
   responded_at: string | null;
   provider_name?: string | null;
+  provider_verified?: boolean;
 }
 
 /**

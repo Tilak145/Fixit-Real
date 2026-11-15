@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check, Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { VerifiedCheck } from "@/components/fixit/pro-card";
 import { formatCents } from "@/lib/commission";
 import { respondToQuote, type JobQuote } from "@/lib/fixit";
 import {
@@ -111,6 +112,7 @@ export function QuoteComparison({ quotes }: { quotes: JobQuote[] }) {
           </strong>
           <span className="text-[13px] text-muted-foreground">
             from {quote.provider_name ?? "your pro"}
+            {quote.provider_verified ? <VerifiedCheck /> : null}
           </span>
           <span className={"rounded-full px-2.5 py-1 text-[11px] font-bold " + statusPillClass(quote.status)}>
             {QUOTE_STATUS[quote.status]}
@@ -181,6 +183,7 @@ export function QuoteComparison({ quotes }: { quotes: JobQuote[] }) {
                 <th key={quote.id} className="px-3 py-2.5 align-bottom">
                   <span className="block text-[13px] font-bold">
                     {quote.provider_name ?? "A local pro"}
+                    {quote.provider_verified ? <VerifiedCheck /> : null}
                   </span>
                   <span
                     className={"mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold " + statusPillClass(quote.status)}

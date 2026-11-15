@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MapPin } from "lucide-react";
+import { BadgeCheck, MapPin } from "lucide-react";
 import type { ProSummary } from "@/lib/fixit";
 import {
   availabilityLabel,
@@ -7,6 +7,19 @@ import {
   MARKET_TIMEZONE,
   type AvailabilityFacts,
 } from "@/lib/fixit-live-availability";
+
+/** The blue check shown next to a business name once FixIt has verified it. */
+export function VerifiedCheck({ className = "" }: { className?: string }) {
+  return (
+    <BadgeCheck
+      className={"ml-1.5 inline-block h-[1.05em] w-[1.05em] align-[-0.12em] text-[#1D9BF0] " + className}
+      aria-label="Verified by FixIt: licence and insurance checked"
+      role="img"
+    >
+      <title>Verified by FixIt: licence and insurance checked</title>
+    </BadgeCheck>
+  );
+}
 
 export function Stars({ rating }: { rating: number }) {
   const full = Math.round(rating);
@@ -71,7 +84,10 @@ export function ProCard({ pro, now = new Date() }: { pro: ProSummary; now?: Date
         <AvailabilityBadge pro={pro} now={now} />
       </div>
       <div className="flex flex-1 flex-col p-4">
-        <div className="font-display text-[17px] font-semibold text-foreground">{pro.business_name}</div>
+        <div className="font-display text-[17px] font-semibold text-foreground">
+          {pro.business_name}
+          {pro.verified ? <VerifiedCheck /> : null}
+        </div>
         <div className="mb-3 mt-1.5 flex items-center gap-2">
           {pro.review_count > 0 ? (
             <>

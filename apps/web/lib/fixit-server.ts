@@ -138,8 +138,19 @@ export async function listPros(filter: ProFilter = {}): Promise<ProSummary[]> {
   const placementByProvider = new Map(
     (placementRows ?? []).map((row) => [row.provider_id as string, row.placement as number]),
   );
+  // The check mark: set only when staff confirmed both licence and insurance.
+  const { data: verifiedRows } = await supabase
+    .from("provider_trust_evidence")
+    .select("provider_id,license_checked,insurance_checked")
+    .in("provider_id", ids);
+  const verifiedIds = new Set(
+    (verifiedRows ?? [])
+      .filter((row) => row.license_checked && row.insurance_checked)
+      .map((row) => row.provider_id as string),
+  );
   const withAvailability = rows.map((row) => ({
     ...row,
+    verified: verifiedIds.has(row.id),
     city: cityByProvider.get(row.id) ?? "Akron, OH",
     hours: hoursByProvider.get(row.id) ?? [],
     placement: placementByProvider.get(row.id),

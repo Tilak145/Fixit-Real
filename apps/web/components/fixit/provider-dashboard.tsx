@@ -2432,7 +2432,10 @@ export function ProviderDashboard() {
               </Panel>
 
               <div className="grid gap-5 sm:grid-cols-3">
-                {PLAN_ORDER.map((plan) => {
+                {/* The free Founding Pro place is only shown to someone on it. A pro
+                    who has moved to a paid plan, or has had their free month, has no
+                    use for a card that says "Free — no billing". */}
+                {PLAN_ORDER.filter((plan) => plan !== "founding" || pro.plan === "founding").map((plan) => {
                   const on = pro.plan === plan;
                   const info = planByKey(plan);
                   // The free founding tier has no price to check out with.

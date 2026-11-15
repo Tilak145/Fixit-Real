@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Crown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { currentPrice } from "@/lib/payments-price";
+import { stateInfo } from "@/lib/states";
 import { listPaymentProducts, type PaymentProduct } from "@/lib/payments";
 import { CheckoutButton } from "@/components/payments";
 import { useAuth } from "@/lib/auth-context";
@@ -648,7 +649,7 @@ export function OnboardingWizard() {
             <div className="mb-3 rounded-[10px] border border-border p-3.5">
               <label className="block">
                 <span className="mb-1 block text-xs font-bold text-foreground/70">
-                  Ohio Business Registration Number (Optional)
+                  {stateInfo(data.licenseState).name} Business Registration Number (Optional)
                 </span>
                 <input
                   className={inputClass}
@@ -658,16 +659,17 @@ export function OnboardingWizard() {
                 />
               </label>
               <p className="mt-2 text-[12px] text-muted-foreground">
-                Your business&apos;s registration number from the Ohio Secretary of State. We look it up on{" "}
+                Your business&apos;s registration number from the {stateInfo(data.licenseState).registrationName}. We look it up on{" "}
                 <a
-                  href="https://businesssearch.ohiosos.gov/"
+                  href={stateInfo(data.licenseState).registrationLookupUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="font-bold text-primary hover:underline"
                 >
-                  businesssearch.ohiosos.gov
+                  {new URL(stateInfo(data.licenseState).registrationLookupUrl).hostname}
                 </a>{" "}
-                when your application is reviewed, so we can confirm the business is registered in Ohio.
+                when your application is reviewed, so we can confirm the business is registered in{" "}
+                {stateInfo(data.licenseState).name}.
               </p>
             </div>
             <DocumentSlot

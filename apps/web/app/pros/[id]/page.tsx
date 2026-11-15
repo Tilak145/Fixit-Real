@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MapPin, ShieldCheck, ArrowRight } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/fixit/site-chrome";
-import { Stars } from "@/components/fixit/pro-card";
+import { Stars, VerifiedCheck } from "@/components/fixit/pro-card";
 import { getPro, getProTrustEvidence, listProReviews } from "@/lib/fixit-server";
 import { TrustPanel } from "@/components/fixit/trust-panel";
 import { isVerified, trustScore, TRUST_LEVEL_LABEL } from "@/lib/trust-score";
@@ -62,7 +62,10 @@ export default async function ProProfilePage({ params }: { params: Promise<{ id:
                 )}
               </div>
               <div className="p-6">
-                <h1 className="mb-2 font-display text-2xl font-semibold">{pro.business_name}</h1>
+                <h1 className="mb-2 font-display text-2xl font-semibold">
+                  {pro.business_name}
+                  {verified ? <VerifiedCheck /> : null}
+                </h1>
                 <div className="mb-3 flex items-center gap-2">
                   {pro.review_count > 0 ? (
                     <>

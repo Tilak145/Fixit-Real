@@ -307,6 +307,7 @@ test("checkout opens a Stripe subscription for the chosen plan, tied to the sign
   assert.equal(sent.headers["idempotency-key"], "fixit-checkout-user-1-abc");
   assert.ok(sent.form.get("customer")?.startsWith("cus_"));
   assert.equal(sent.form.get("subscription_data[trial_end]"), null, "no free month to carry over");
+  assert.equal(sent.form.get("allow_promotion_codes"), "true", "the payment page offers a promotion code box");
 });
 
 test("someone else's address or a price we did not create is refused", async () => {
