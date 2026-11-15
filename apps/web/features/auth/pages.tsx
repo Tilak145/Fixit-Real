@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingState } from "@/components/app/states";
 import { emailCodeAdvice, useAuth } from "@/lib/auth-context";
+import { landingPath } from "@/lib/landing";
 import { AddressInput } from "@/components/fixit/address-input";
 
 function AuthFrame({
@@ -73,7 +74,8 @@ export function EmailCodeForm({ email, purpose, onBack, redirectTo = "/", title,
     const result = await auth.verifyEmailCode(email, state.code);
     // A refused code is cleared, so retyping it fires the check again.
     if (!result.ok) return dispatch({ type: "error", message: result.message ?? "Please try again.", clear: true });
-    window.location.replace(redirectTo);
+    // A pro lands on their dashboard; anyone else on the page that was asked for.
+    window.location.replace(await landingPath(redirectTo));
   };
   const resend = async () => {
     if (state.pending) return;
@@ -154,7 +156,8 @@ export function LoginPage({ allowEmailOtp = false, defaultEmailOtp = false, redi
     setPending(false);
     if (!result.ok) return toast.error(result.message);
     if (emailOnly) { setVerificationEmail(email.trim()); return; }
-    window.location.replace(redirectTo);
+    // A pro lands on their dashboard, not the customer home page.
+    window.location.replace(await landingPath(redirectTo));
   };
 
   return (

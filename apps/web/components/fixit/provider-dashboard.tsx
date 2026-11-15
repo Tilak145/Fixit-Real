@@ -344,10 +344,11 @@ export function ProSignInForm({ onSignedIn }: { onSignedIn?: () => void } = {}) 
       setError(result.message ?? "Sign in failed. Check your details and try again.");
       return;
     }
-    // In the dashboard's own gate, a full navigation lands them on the
-    // console. Opened over a page, the caller decides what happens next.
-    if (onSignedIn) onSignedIn();
-    else window.location.replace("/pro/dashboard");
+    // Either way a pro ends up on their dashboard. Opened over a page, the
+    // caller first closes the window; leaving it at that kept a pro on the
+    // customer page they had been reading, signed in as if they were a customer.
+    onSignedIn?.();
+    window.location.replace("/pro/dashboard");
   };
 
   const benefits = [

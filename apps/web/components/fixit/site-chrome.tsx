@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { MapPin, ChevronDown, UserRound, Wrench, LogIn } from "lucide-react";
+import { MapPin, ChevronDown, UserRound, Wrench, LogIn, LayoutDashboard } from "lucide-react";
 import { SITE_EMAIL, SITE_PHONE, SITE_PHONE_HREF } from "@/lib/site-contact";
 import { ProWindow, type ProWindowMode } from "@/components/fixit/pro-window";
 import { FixItLogo } from "./logo";
 import { useAuth } from "@/lib/auth-context";
+import { useIsPro } from "@/lib/landing";
 import { useCities } from "@/components/fixit/city-select";
 import { rememberCity, readRememberedCity, resolveCity } from "@/lib/city-choice";
 
@@ -202,6 +203,8 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
   // Joining or signing in opens over the page instead of leaving it.
   const [proWindow, setProWindow] = useState<ProWindowMode>(null);
   const signedIn = status === "authenticated";
+  // A professional's own door is their dashboard; everyone else has an account page.
+  const isPro = useIsPro();
   const pathname = usePathname();
 
   return (
@@ -224,13 +227,23 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
           <CityPicker city={city} />
           {signedIn ? (
             <>
-              <Link
-                href="/account"
-                className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-bold text-foreground/80 hover:text-primary"
-              >
-                <UserRound className="h-4 w-4" aria-hidden="true" />
-                My account
-              </Link>
+              {isPro ? (
+                <Link
+                  href="/pro/dashboard"
+                  className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-bold text-foreground/80 hover:text-primary"
+                >
+                  <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+                  Dashboard
+                </Link>
+              ) : (
+                <Link
+                  href="/account"
+                  className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-bold text-foreground/80 hover:text-primary"
+                >
+                  <UserRound className="h-4 w-4" aria-hidden="true" />
+                  My account
+                </Link>
+              )}
               {/* Signed in, the primary button is the way out. Offering "Join"
                   to someone who already has an account reads as a bug. */}
               <button
