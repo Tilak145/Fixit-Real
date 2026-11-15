@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useUnreadMessages } from "@/lib/unread-messages";
 import { CalendarDays, Check, ClipboardList, Copy, Hash, LogOut, MessageSquare, Search, ShieldCheck, Sparkles } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/fixit/site-chrome";
 import { VerifiedCheck } from "@/components/fixit/pro-card";
@@ -70,6 +71,16 @@ function formatDateTime(iso: string): string {
 function RequestCard({ request }: { request: MyRequest }) {
   const status = STATUS[request.status] ?? STATUS.new;
   const [open, setOpen] = useState(false);
+  // A new message from the pro opens the conversation, so it is not missed
+  // behind the "Message the pro" button.
+  const unreadHere = useUnreadMessages().countFor(request.id);
+  const [autoOpened, setAutoOpened] = useState(false);
+  useEffect(() => {
+    if (unreadHere > 0 && !autoOpened) {
+      setOpen(true);
+      setAutoOpened(true);
+    }
+  }, [unreadHere, autoOpened]);
   return (
     <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-2.5">
@@ -121,6 +132,11 @@ function RequestCard({ request }: { request: MyRequest }) {
           <Button variant="outline" size="sm" onClick={() => setOpen((v) => !v)}>
             <MessageSquare className="h-4 w-4" aria-hidden="true" />
             {open ? "Hide messages" : "Message the pro"}
+            {!open && unreadHere > 0 ? (
+              <span className="ml-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#FF8A00] px-1.5 text-[11px] font-bold text-white">
+                {unreadHere} new
+              </span>
+            ) : null}
           </Button>
         </div>
       )}

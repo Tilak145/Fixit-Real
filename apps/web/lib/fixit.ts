@@ -150,10 +150,25 @@ export async function listMyRequests(): Promise<MyRequest[]> {
     .limit(50);
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as MyRequest[];
+  if (rows.length === 0) return rows;
+  // The quotes on these requests. Row Level Security returns the customer's own,
+  // so this is one read for the whole page rather than one per card. They are
+  // read first, and whether or not any job has been claimed: a price can arrive
+  // on a job nobody has claimed yet, and the customer must see it.
+  const { data: quoteRows } = await supabase
+    .from("quotes")
+    .select(QUOTE_FIELDS)
+    .in("quote_request_id", rows.map((row) => row.id))
+    .order("created_at", { ascending: false });
+  const quotes = (quoteRows ?? []) as JobQuote[];
+  // Every pro the customer needs a name for: the one on the job, and each one who sent a price.
   const claimedIds = Array.from(
-    new Set(rows.map((row) => row.claimed_by).filter((value): value is string => Boolean(value))),
+    new Set([
+      ...rows.map((row) => row.claimed_by).filter((value): value is string => Boolean(value)),
+      ...quotes.map((quote) => quote.provider_id),
+    ]),
   );
-  if (claimedIds.length === 0) return rows;
+  if (claimedIds.length === 0) return rows.map((row) => ({ ...row, quotes: [] }));
   const { data: providers } = await supabase
     .from("providers")
     .select("id,business_name")
@@ -172,17 +187,8 @@ export async function listMyRequests(): Promise<MyRequest[]> {
     provider_verified: row.claimed_by ? verifiedIds.has(row.claimed_by) : false,
   }));
 
-  // The quotes on these requests. Row Level Security returns the customer's own,
-  // so this is one extra read for the whole page rather than one per card, which
-  // is what lets a card show a price waiting on an answer without a round trip.
-  if (withNames.length === 0) return withNames;
-  const { data: quotes } = await supabase
-    .from("quotes")
-    .select(QUOTE_FIELDS)
-    .in("quote_request_id", withNames.map((row) => row.id))
-    .order("created_at", { ascending: false });
   const quotesByRequest = new Map<string, JobQuote[]>();
-  for (const row of (quotes ?? []) as JobQuote[]) {
+  for (const row of quotes) {
     const list = quotesByRequest.get(row.quote_request_id) ?? [];
     list.push({
       ...row,
@@ -517,6 +523,115 @@ export async function listMessages(requestId: string): Promise<Message[]> {
     .limit(200);
   if (error) throw new Error(error.message);
   return (data ?? []) as Message[];
+}
+
+/** A customer's decision on a professional's price, not yet acknowledged. */
+export interface QuoteResponseNews {
+  quote_id: string;
+  quote_request_id: string;
+  status: "accepted" | "declined";
+  amount_cents: number;
+  responded_at: string;
+  customer_name: string | null;
+  category_slug: string | null;
+}
+
+/**
+ * Prices of the signed-in professional that a customer has accepted or declined
+ * since they last looked. The first time there is no mark yet, so one is made
+ * now and nothing old is announced.
+ */
+export async function listQuoteResponseNews(): Promise<QuoteResponseNews[]> {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return [];
+  const { data: seen } = await supabase
+    .from("activity_seen")
+    .select("quote_responses_seen_at")
+    .eq("user_id", auth.user.id)
+    .maybeSingle();
+  if (!seen) {
+    await supabase.from("activity_seen").upsert({ user_id: auth.user.id }, { onConflict: "user_id" });
+    return [];
+  }
+  const { data: quotes, error } = await supabase
+    .from("quotes")
+    .select("id,quote_request_id,status,amount_cents,responded_at")
+    .in("status", ["accepted", "declined"])
+    .gt("responded_at", seen.quote_responses_seen_at as string)
+    .order("responded_at", { ascending: false })
+    .limit(20);
+  if (error) throw new Error(error.message);
+  if (!quotes || quotes.length === 0) return [];
+  const { data: requests } = await supabase
+    .from("quote_requests")
+    .select("id,customer_name,category_slug")
+    .in("id", quotes.map((quote) => quote.quote_request_id as string));
+  const byId = new Map((requests ?? []).map((row) => [row.id as string, row]));
+  return quotes.map((quote) => {
+    const request = byId.get(quote.quote_request_id as string);
+    return {
+      quote_id: quote.id as string,
+      quote_request_id: quote.quote_request_id as string,
+      status: quote.status as "accepted" | "declined",
+      amount_cents: quote.amount_cents as number,
+      responded_at: quote.responded_at as string,
+      customer_name: (request?.customer_name as string | undefined) ?? null,
+      category_slug: (request?.category_slug as string | undefined) ?? null,
+    };
+  });
+}
+
+/** The professional has seen the news up to now. */
+export async function markQuoteResponsesSeen(): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return;
+  const { error } = await supabase
+    .from("activity_seen")
+    .upsert(
+      { user_id: auth.user.id, quote_responses_seen_at: new Date().toISOString() },
+      { onConflict: "user_id" },
+    );
+  if (error) throw new Error(error.message);
+}
+
+/** One conversation with messages the signed-in person has not read yet. */
+export interface UnreadThread {
+  quote_request_id: string;
+  unread_count: number;
+  last_body: string;
+  last_sender_role: "customer" | "provider";
+  last_at: string;
+}
+
+/** Conversations with unread messages from the other side, newest first. */
+export async function listUnreadMessages(): Promise<UnreadThread[]> {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("my_unread_messages");
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Array<UnreadThread & { unread_count: number | string }>).map((row) => ({
+    ...row,
+    unread_count: Number(row.unread_count),
+  }));
+}
+
+/** Note that the signed-in person has read a conversation up to now. */
+export async function markThreadRead(requestId: string): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return;
+  const { error } = await supabase
+    .from("message_reads")
+    .upsert(
+      { user_id: data.user.id, quote_request_id: requestId, last_read_at: new Date().toISOString() },
+      { onConflict: "user_id,quote_request_id" },
+    );
+  if (error) throw new Error(error.message);
 }
 
 /**

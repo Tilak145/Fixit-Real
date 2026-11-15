@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { MapPin, ChevronDown, UserRound, Wrench, LogIn, LayoutDashboard } from "lucide-react";
+import { MapPin, ChevronDown, UserRound, Wrench, LogIn, LayoutDashboard, Bell, MessageSquare } from "lucide-react";
+import { useWaitingQuotes } from "@/lib/waiting-quotes";
+import { useUnreadMessages } from "@/lib/unread-messages";
 import { SITE_EMAIL, SITE_PHONE, SITE_PHONE_HREF } from "@/lib/site-contact";
 import { ProWindow, type ProWindowMode } from "@/components/fixit/pro-window";
 import { FixItLogo } from "./logo";
@@ -206,6 +208,8 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
   // A professional's own door is their dashboard; everyone else has an account page.
   const isPro = useIsPro();
   const pathname = usePathname();
+  const waiting = useWaitingQuotes(signedIn && !isPro);
+  const unread = useUnreadMessages(signedIn);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card">
@@ -234,6 +238,14 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
                 >
                   <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
                   Dashboard
+                  {unread.total > 0 ? (
+                    <span
+                      className="ml-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#FF8A00] px-1.5 text-[11px] font-bold text-white"
+                      aria-label={`${unread.total} new ${unread.total === 1 ? "message" : "messages"}`}
+                    >
+                      {unread.total}
+                    </span>
+                  ) : null}
                 </Link>
               ) : (
                 <Link
@@ -242,6 +254,14 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
                 >
                   <UserRound className="h-4 w-4" aria-hidden="true" />
                   My account
+                  {waiting.count + unread.total > 0 ? (
+                    <span
+                      className="ml-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#FF8A00] px-1.5 text-[11px] font-bold text-white"
+                      aria-label={`${waiting.count + unread.total} new`}
+                    >
+                      {waiting.count + unread.total}
+                    </span>
+                  ) : null}
                 </Link>
               )}
               {/* Signed in, the primary button is the way out. Offering "Join"
@@ -276,6 +296,40 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
           )}
         </div>
       </div>
+      {/* Someone wrote to you: say so on every page, for customers and pros alike. */}
+      {signedIn && unread.total > 0 && unread.latest && pathname !== "/account" && pathname !== "/pro/dashboard" ? (
+        <Link
+          href={isPro ? "/pro/dashboard" : "/account"}
+          data-testid="message-notice"
+          className="flex items-center justify-center gap-2.5 bg-primary px-4 py-2.5 text-center text-[13.5px] font-bold text-primary-foreground hover:bg-primary/90"
+        >
+          <MessageSquare className="h-4 w-4 flex-none" aria-hidden="true" />
+          <span className="min-w-0 truncate">
+            {unread.total === 1
+              ? `New message from your ${unread.latest.last_sender_role === "provider" ? "pro" : "customer"}: “${unread.latest.last_body.slice(0, 60)}${unread.latest.last_body.length > 60 ? "…" : ""}”`
+              : `You have ${unread.total} new messages`}
+          </span>
+          <span className="flex-none rounded-full bg-white/20 px-3 py-0.5 text-[12.5px]">Read →</span>
+        </Link>
+      ) : null}
+      {/* A price has arrived: say so on every page, not just in the account. */}
+      {signedIn && !isPro && waiting.count > 0 && pathname !== "/account" ? (
+        <Link
+          href="/account"
+          data-testid="quote-notice"
+          className="flex items-center justify-center gap-2.5 bg-[#FF8A00] px-4 py-2.5 text-center text-[13.5px] font-bold text-white hover:bg-[#E67C00]"
+        >
+          <Bell className="h-4 w-4 flex-none" aria-hidden="true" />
+          <span>
+            {waiting.count === 1
+              ? `You have a new quote${waiting.latest?.providerName ? ` from ${waiting.latest.providerName}` : ""}${
+                  waiting.latest ? ` · $${(waiting.latest.amountCents / 100).toFixed(2)}` : ""
+                }`
+              : `You have ${waiting.count} new quotes waiting`}
+          </span>
+          <span className="rounded-full bg-white/20 px-3 py-0.5 text-[12.5px]">View →</span>
+        </Link>
+      ) : null}
       <ProWindow mode={proWindow} onClose={() => setProWindow(null)} />
     </header>
   );

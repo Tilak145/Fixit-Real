@@ -183,13 +183,20 @@ export function OnboardingWizard() {
     } catch {
       business = "";
     }
-    setData((d) => ({
-      ...d,
-      email: d.email || user.email || "",
-      phone: d.phone || phone,
-      businessName: d.businessName || business,
-    }));
-  }, [user, set]);
+    setData((d) => {
+      const next = {
+        email: d.email || user.email || "",
+        phone: d.phone || phone,
+        businessName: d.businessName || business,
+      };
+      // Returning the same object when nothing changed lets React stop here.
+      return next.email === d.email && next.phone === d.phone && next.businessName === d.businessName
+        ? d
+        : { ...d, ...next };
+    });
+    // `set` is rebuilt on every render, so it must not be a dependency: it made
+    // this effect run, update the page, and run again without end.
+  }, [user]);
 
   // Show any document already on file, so returning to onboarding does not ask
   // for it twice.
@@ -394,9 +401,13 @@ export function OnboardingWizard() {
       <div className="px-10">
         {step === 1 && (
           <>
-            <h2 className="text-center font-display text-[22px] font-semibold">Your business</h2>
+            <h2 className="text-center font-display text-[22px] font-semibold">
+              {data.accountType === "homeowner" ? "How will you use FixIt?" : "Your business"}
+            </h2>
             <p className="mb-4 text-center text-[13px] text-muted-foreground">
-              We started with what you entered. Add your address and logo so customers recognise you.
+              {data.accountType === "homeowner"
+                ? "Choose the option that fits you."
+                : "We started with what you entered. Add your address and logo so customers recognise you."}
             </p>
             <div className="mb-4 grid grid-cols-2 gap-2.5">
               {[
@@ -423,6 +434,24 @@ export function OnboardingWizard() {
                 );
               })}
             </div>
+            {data.accountType === "homeowner" ? (
+              // A homeowner has no business to set up, so none of the business
+              // fields are shown. They just describe the job.
+              <div className="rounded-[10px] border border-border bg-muted/40 p-5 text-center">
+                <strong className="block font-display text-[17px]">You don&apos;t need a business account</strong>
+                <p className="mx-auto mt-1.5 max-w-[440px] text-[13px] text-muted-foreground">
+                  Homeowners can ask for quotes for free. Describe your job and local pros will send you prices to
+                  compare.
+                </p>
+                <Link
+                  href="/request"
+                  className="mt-4 inline-block rounded-md bg-primary px-6 py-3 text-[14px] font-bold text-primary-foreground hover:bg-primary/90"
+                >
+                  Describe my job →
+                </Link>
+              </div>
+            ) : (
+            <>
             <span className="sr-only">Business information</span>
             <div className="mb-4 flex flex-wrap items-center gap-4 rounded-[10px] border border-border p-3.5">
               <span className="flex h-[68px] w-[68px] flex-none items-center justify-center overflow-hidden rounded-[10px] border border-border bg-muted">
@@ -513,7 +542,9 @@ export function OnboardingWizard() {
                 Pick your address from the list so customers see it correctly.
               </span>
             </label>
-            <Nav onBack={back} onNext={next} nextDisabled={!data.businessName || !data.address || data.accountType !== "provider"} />
+            <Nav onBack={back} onNext={next} nextDisabled={!data.businessName || !data.address} />
+            </>
+            )}
           </>
         )}
 

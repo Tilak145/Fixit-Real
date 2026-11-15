@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { listMessages, sendMessage } from "@/lib/fixit";
+import { listMessages, markThreadRead, sendMessage } from "@/lib/fixit";
+import { UNREAD_MESSAGES_KEY } from "@/lib/unread-messages";
 
 /**
  * The conversation about one quote request. The same component serves the
@@ -28,6 +29,18 @@ export function MessageThread({
     queryFn: () => listMessages(requestId),
     refetchInterval: 20_000,
   });
+
+  // Reading the conversation clears its notification. Marked again whenever a
+  // newer message arrives while it is open, so it never lights up behind the reader.
+  const newestId = messages.data?.[messages.data.length - 1]?.id;
+  useEffect(() => {
+    if (!newestId) return;
+    markThreadRead(requestId)
+      .then(() => queryClient.invalidateQueries({ queryKey: [UNREAD_MESSAGES_KEY] }))
+      .catch(() => {
+        /* The notification just stays until the next try. */
+      });
+  }, [newestId, requestId, queryClient]);
 
   const send = useMutation({
     mutationFn: (body: string) => sendMessage({ requestId, role, body }),
