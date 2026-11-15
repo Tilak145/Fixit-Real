@@ -522,15 +522,16 @@ export interface SubscriptionRow {
 }
 
 /**
- * Subscriptions as the platform synced them from Stripe. This is read-only:
- * cancelling or changing a plan happens in Stripe through the customer portal,
- * and the change lands here when the provider confirms it.
+ * Subscriptions as the billing function recorded them from Stripe. This is
+ * read-only: cancelling or changing a plan happens in Stripe through the
+ * customer portal, and the change lands here when Stripe's webhook arrives.
+ * Only the owner can read every row; anyone else sees just their own.
  */
 export async function listSubscriptionOverview(): Promise<SubscriptionRow[]> {
   const supabase = getSupabase();
   if (!supabase) return [];
   const { data, error } = await supabase
-    .from("spk_payment_subscriptions")
+    .from("payment_subscriptions")
     .select("id,user_id,status,cancel_at_period_end,current_period_end,stripe_subscription_id")
     .order("created_at", { ascending: false })
     .limit(200);

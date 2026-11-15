@@ -13,6 +13,14 @@ Deno.serve(async (request: Request) => {
   const user = await verified.json();
   if (typeof user.id !== 'string') return reply({ error: 'Please sign in again' }, 401);
   const headers = { apikey: admin, authorization: `Bearer ${admin}`, 'Content-Type': 'application/json' };
+  // Deleting the account would leave a Stripe subscription running with nobody
+  // to cancel it, so a live plan has to be cancelled first (Plan page > Manage Plan).
+  const plans = await fetch(
+    `${url}/rest/v1/payment_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&status=in.(active,trialing,past_due,unpaid,paused,incomplete)&select=id&limit=1`,
+    { headers },
+  );
+  if (!plans.ok) return reply({ error: 'Could not check your billing. Please retry.' }, 503);
+  if ((await plans.json()).length) return reply({ error: 'Cancel your plan first (Plan page, Manage Plan), then delete your account.' }, 409);
   // The application migration owns all user data and declares ON DELETE CASCADE.
   // Each private upload uses the user ID as its first path segment.
   const buckets = await fetch(`${url}/storage/v1/bucket`, { headers });

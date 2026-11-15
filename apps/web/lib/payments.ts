@@ -38,44 +38,38 @@ export interface MyPaymentState {
   entitlements: Array<{ entitlementKey: string; active: boolean; expiresAt?: string | null }>;
 }
 
-async function paymentRequest<T>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> {
+/**
+ * Payments run in the `billing` function in Supabase, which holds the Stripe
+ * keys. The website only ever sends the signed-in person's own session token.
+ */
+async function paymentRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const supabase = getSupabase();
   const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/+$/u, "");
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+  if (!base || !anonKey) throw new Error("Payments are not enabled for this application.");
+  if (!session?.access_token) throw new Error("Please sign in to manage billing.");
+
   const headers = new Headers(init?.headers);
   if (init?.body) headers.set("content-type", "application/json");
-  if (session?.access_token) {
-    headers.set("x-spk-supabase-access-token", session.access_token);
-  }
-  const response = await fetch(`/api/spk/payments/${path}`, {
+  headers.set("authorization", `Bearer ${session.access_token}`);
+  headers.set("apikey", anonKey);
+
+  const response = await fetch(`${base}/functions/v1/billing/${path}`, {
     ...init,
     headers,
     cache: "no-store",
   });
-  const value = await response.json().catch(() => null) as unknown;
-  // A response the payment API did not write carries no JSON message, and the
-  // bare fallback erases the one fact that identifies which layer answered:
-  // 404/405 from this app's own router when /api/spk/payments is missing or
-  // exports one method, 502 from an intermediary, or a 2xx HTML page from the
-  // Preview sidecar while the dev server is restarting. The buyer reading the
-  // alert cannot act on any of that, so it goes to the console, where
-  // spk-browser-check and the Preview log pick it up.
+  const value = (await response.json().catch(() => null)) as unknown;
   if (!response.ok || value === null) {
-    const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
-    const error = record.error && typeof record.error === "object"
-      ? record.error as Record<string, unknown>
-      : record;
+    const record = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+    const error = record.error && typeof record.error === "object" ? (record.error as Record<string, unknown>) : record;
     if (typeof error.message !== "string") {
-      console.error(
-        `[spk:payments] ${init?.method ?? "GET"} /api/spk/payments/${path} -> HTTP ${response.status}`,
-        `${response.headers.get("content-type") ?? "no content-type"}; body was not the payment API's JSON`,
-      );
+      console.error(`[payments] ${init?.method ?? "GET"} ${path} -> HTTP ${response.status}, no message in the reply`);
     }
     throw new Error(typeof error.message === "string" ? error.message : "Payments are temporarily unavailable.");
   }
-  const record = typeof value === "object" ? value as Record<string, unknown> : {};
+  const record = typeof value === "object" ? (value as Record<string, unknown>) : {};
   return ("data" in record ? record.data : value) as T;
 }
 
