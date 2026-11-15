@@ -52,12 +52,13 @@ import {
 } from "@/lib/fixit";
 import { QuoteComposer } from "@/components/fixit/quote-form";
 import { formatCents } from "@/lib/commission";
+import { summarizeEarnings, type AcceptedQuote, type CompletedJob } from "@/lib/earnings";
 import { contactDetailsReleased, quoteState } from "@/lib/quote-release";
 import { estimateJob, formatEstimateRange } from "@/lib/fixit-estimate";
 import { AvailabilityCalendar } from "@/components/fixit/availability-calendar";
 import { isOpenAt, nextOpening, formatMinute } from "@/lib/fixit-availability";
 import { getMyAvailability, setAcceptingWork } from "@/lib/fixit";
-import { availabilityState, availabilityLabel } from "@/lib/fixit-live-availability";
+import { availabilityState, availabilityLabel, MARKET_TIMEZONE } from "@/lib/fixit-live-availability";
 import { budgetOverlaps, formatBudgetRange, type BudgetRange } from "@/lib/fixit-budget";
 import { leadFunnel, formatFunnel } from "@/lib/fixit-lead-stats";
 import { trialState, trialMessage, trialReminder } from "@/lib/fixit-trial";
@@ -184,6 +185,36 @@ function Panel({ title, action, children }: { title: string; action?: React.Reac
       </div>
       <div className="p-5">{children}</div>
     </section>
+  );
+}
+
+/** Today's date and the time, in the market's time zone, kept current. Drawn after the page loads so it never mismatches the server's clock. */
+function SidebarClock() {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const timer = window.setInterval(() => setNow(new Date()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  if (!now) return <div className="mt-3 h-[38px]" aria-hidden="true" />;
+  const date = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: MARKET_TIMEZONE,
+  });
+  const time = now.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: MARKET_TIMEZONE,
+    timeZoneName: "short",
+  });
+  return (
+    <div className="mt-3 text-white/80" data-testid="sidebar-clock">
+      <div className="text-[12px]">{date}</div>
+      <div className="font-display text-[18px] font-bold text-white">{time}</div>
+    </div>
   );
 }
 
@@ -721,6 +752,27 @@ export function ProviderDashboard() {
     queryKey: ["my-appointments", provider.data?.id],
     enabled: !!provider.data,
     queryFn: listMyAppointments,
+    refetchInterval: 60_000,
+  });
+
+  // What this pro has earned: prices customers accepted, and jobs they reported
+  // as completed. Row Level Security returns only this pro's own rows.
+  const earnings = useQuery({
+    queryKey: ["my-earnings", provider.data?.id],
+    enabled: !!provider.data,
+    queryFn: async () => {
+      const supabase = requireSupabase();
+      const [{ data: accepted, error: quoteError }, { data: jobs, error: jobError }] = await Promise.all([
+        supabase.from("quotes").select("amount_cents,responded_at").eq("status", "accepted"),
+        supabase
+          .from("job_reports")
+          .select("job_subtotal_cents,refunded_cents,completed_on,verification_status")
+          .eq("outcome", "completed"),
+      ]);
+      if (quoteError) throw new Error(quoteError.message);
+      if (jobError) throw new Error(jobError.message);
+      return summarizeEarnings((accepted ?? []) as AcceptedQuote[], (jobs ?? []) as CompletedJob[], new Date());
+    },
     refetchInterval: 60_000,
   });
 
@@ -1359,6 +1411,7 @@ export function ProviderDashboard() {
           >
             {pro.status === "approved" ? "✓ Verified" : "⏳ Under review"}
           </span>
+          <SidebarClock />
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {nav.map(({ key, icon: Icon, label, badge }) => (
@@ -1631,6 +1684,49 @@ export function ProviderDashboard() {
                     onClick={() => setSection("jobs")}
                   />
                 </div>
+              </div>
+
+              {/* Money: prices customers accepted and jobs completed. FixIt does
+                  not collect the customer's payment, so none of this is a payout. */}
+              <div className="mb-6 rounded-2xl border border-border bg-card p-4">
+                <h2 className="font-display text-[15px] font-bold">Your earnings</h2>
+                {earnings.data ? (
+                  <div className="mt-3 flex flex-wrap gap-4">
+                    <StatCard
+                      icon={Receipt}
+                      tone="green"
+                      value={formatCents(earnings.data.bookedThisMonthCents)}
+                      label="Booked this month"
+                      sub={`${earnings.data.bookedThisMonthCount} accepted ${earnings.data.bookedThisMonthCount === 1 ? "price" : "prices"}`}
+                    />
+                    <StatCard
+                      icon={CreditCard}
+                      tone="blue"
+                      value={formatCents(earnings.data.bookedAllTimeCents)}
+                      label="Booked all time"
+                      sub={`${earnings.data.bookedAllTimeCount} accepted ${earnings.data.bookedAllTimeCount === 1 ? "price" : "prices"}`}
+                    />
+                    <StatCard
+                      icon={Briefcase}
+                      tone="violet"
+                      value={formatCents(earnings.data.confirmedCents)}
+                      label="Completed & confirmed"
+                      sub={
+                        earnings.data.awaitingCount > 0
+                          ? `${formatCents(earnings.data.awaitingCents)} awaiting confirmation`
+                          : `${earnings.data.confirmedCount} confirmed ${earnings.data.confirmedCount === 1 ? "job" : "jobs"}`
+                      }
+                    />
+                  </div>
+                ) : (
+                  <p className="mt-2 text-[13px] text-muted-foreground">
+                    {earnings.isError ? "Earnings could not be loaded right now." : "Loading…"}
+                  </p>
+                )}
+                <p className="mt-3 text-[12px] text-muted-foreground">
+                  These are prices customers accepted and jobs you reported. Customers pay you directly, so FixIt
+                  does not show money received.
+                </p>
               </div>
 
               <div className="mb-6 flex flex-wrap gap-4">
