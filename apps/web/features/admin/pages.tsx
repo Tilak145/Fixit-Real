@@ -9,6 +9,7 @@ import {
   ChevronRight,
   BellRing,
   Building2,
+  ClipboardCheck,
   ClipboardList,
   Crown,
   LayoutDashboard,
@@ -56,6 +57,7 @@ import { adminAccounts, adminResources, longColumns, statusColumns } from "./con
 import { AdminOverview } from "./overview";
 import { AdminTeam } from "./team";
 import { AdminStaffAccess } from "./staff-access";
+import { AdminStaffTasks } from "./staff-tasks";
 import { AdminActivity } from "./activity";
 import { AdminSubscriptions } from "./subscriptions";
 import { AdminLeadIntegrity } from "./lead-integrity";
@@ -554,6 +556,7 @@ const SECTION_HINT: Record<string, string> = {
   service_waitlist: "Who is asking for a trade nobody serves yet",
   pro_lookup: "Type a business's nine-digit FixIt number to find it",
   accounts: "Everyone with a FixIt account",
+  tasks: "Work handed out to the team, and what is still open",
   team: "Who works in this dashboard, and as what",
   activity: "A record of every change made here",
 };
@@ -561,6 +564,7 @@ const SECTION_HINT: Record<string, string> = {
 // The sidebar groups sections the way the work is grouped, not the way the
 // tables happen to be named.
 const NAV_GROUPS: { title: string; keys: string[] }[] = [
+  { title: "Work", keys: ["tasks"] },
   { title: "Marketplace", keys: ["dispatch", "providers", "pro_lookup", "customer_lookup", "quote_requests", "lead_integrity", "appointments", "reviews", "messages"] },
   { title: "Revenue", keys: ["subscriptions", "trial_reminders"] },
   { title: "Settings", keys: ["service_waitlist", "service_categories", "service_cities", "accounts", "team", "activity"] },
@@ -603,7 +607,7 @@ export function AdminPage() {
 
   // A screen the owner has since switched off must not stay open in a tab.
   useEffect(() => {
-    if (granted && !isOwner && !granted.has(section) && section !== "overview" && section !== "team") {
+    if (granted && !isOwner && !granted.has(section) && section !== "overview" && section !== "team" && section !== "tasks") {
       setSection("overview");
     }
   }, [granted, isOwner, section]);
@@ -672,6 +676,7 @@ export function AdminPage() {
   // never blinks or hides pages from someone whose access is still loading.
   const available = new Set([
     "overview",
+    "tasks",
     "subscriptions",
     "lead_integrity",
     "customer_lookup",
@@ -685,15 +690,17 @@ export function AdminPage() {
     "activity",
   ].filter((key) => isOwner || !OWNER_ONLY.has(key)));
   for (const key of Array.from(available)) {
-    if (!isOwner && granted && !granted.has(key)) available.delete(key);
+    // Everyone who works here has a task list; it is not a screen to switch off.
+    if (!isOwner && granted && key !== "tasks" && !granted.has(key)) available.delete(key);
   }
   const navigation = Object.fromEntries(
-    ["overview", "dispatch", "service_waitlist", "pro_lookup", "subscriptions", "trial_reminders", "lead_integrity", "customer_lookup", ...adminResources.map((resource) => resource.table), "accounts", "team", "activity"]
+    ["overview", "tasks", "dispatch", "service_waitlist", "pro_lookup", "subscriptions", "trial_reminders", "lead_integrity", "customer_lookup", ...adminResources.map((resource) => resource.table), "accounts", "team", "activity"]
       .filter((key) => available.has(key))
       .map((key) => {
         const resource = adminResources.find((item) => item.table === key);
         const label =
           key === "overview" ? "Overview"
+            : key === "tasks" ? (isOwner ? "Staff tasks" : "My tasks")
             : key === "subscriptions" ? "Subscriptions"
             : key === "lead_integrity" ? "Lead integrity"
             : key === "customer_lookup" ? "Find customer"
@@ -707,6 +714,7 @@ export function AdminPage() {
                   : resource?.label ?? key;
         const icon =
           key === "overview" ? LayoutDashboard
+            : key === "tasks" ? ClipboardCheck
             : key === "subscriptions" ? CreditCard
             : key === "lead_integrity" ? Flag
             : key === "customer_lookup" ? UserSearch
@@ -839,6 +847,14 @@ export function AdminPage() {
           {section === "accounts" && adminAccounts ? <AdminAccounts /> : null}
           {section === "team" && isOwner ? <AdminTeam selfId={auth.user?.id ?? null} /> : null}
           {section === "team" && isOwner ? <AdminStaffAccess /> : null}
+          {section === "tasks" ? (
+            <AdminStaffTasks
+              isOwner={isOwner}
+              selfId={auth.user?.id ?? null}
+              canOpen={(key) => available.has(key)}
+              onOpenScreen={goTo}
+            />
+          ) : null}
           {section === "activity" ? <AdminActivity /> : null}
           {resource ? (
             <ResourceTable
