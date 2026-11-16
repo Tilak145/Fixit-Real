@@ -24,7 +24,7 @@ import {
 import { FixItLogo } from "@/components/fixit/logo";
 import { useCities } from "@/components/fixit/city-select";
 import { AddressInput } from "@/components/fixit/address-input";
-import { PAID_PLANS } from "@/features/plans";
+import { PAID_PLANS, planFitProblem } from "@/features/plans";
 
 const CATEGORIES = [
   { slug: "plumbing", name: "Plumbing", emoji: "🔧" },
@@ -274,6 +274,13 @@ export function OnboardingWizard() {
       setError("Please create your provider account first.");
       return false;
     }
+    // Checked before anything is changed, so picks that do not fit the plan
+    // never wipe what is already saved.
+    const misfit = planFitProblem(chosenPlan, data.cities.length, data.services.length);
+    if (misfit) {
+      setError(misfit);
+      return false;
+    }
     setSaving(true);
     setError(null);
     const { data: existing } = await supabase
@@ -323,23 +330,37 @@ export function OnboardingWizard() {
       }
       providerId = inserted.id;
     }
-    await supabase.from("provider_services").delete().eq("provider_id", providerId);
+    // The list is replaced as a whole. The database refuses a list bigger than
+    // the plan covers, and a refused list must be reported: it used to fail
+    // silently and leave the pro with no services or cities, and so no leads.
+    const failed = (message: string) => {
+      setError(message);
+      setSaving(false);
+      return false;
+    };
+    const { error: clearServices } = await supabase.from("provider_services").delete().eq("provider_id", providerId);
+    if (clearServices) return failed(clearServices.message);
     if (data.services.length > 0) {
-      await supabase
+      const { error: servicesError } = await supabase
         .from("provider_services")
         .insert(data.services.map((s) => ({ provider_id: providerId, category_slug: s })));
+      if (servicesError) return failed(servicesError.message);
     }
-    await supabase.from("provider_service_areas").delete().eq("provider_id", providerId);
+    const { error: clearAreas } = await supabase.from("provider_service_areas").delete().eq("provider_id", providerId);
+    if (clearAreas) return failed(clearAreas.message);
     if (data.cities.length > 0) {
-      await supabase
+      const { error: areasError } = await supabase
         .from("provider_service_areas")
         .insert(data.cities.map((c) => ({ provider_id: providerId, city: c })));
+      if (areasError) return failed(areasError.message);
     }
     setSaving(false);
     return true;
   }
 
   const foundingSlots = founding.data ?? null;
+  // Shown on the plan step, where it changes as the pro tries each plan.
+  const planMisfit = planFitProblem(data.plan, data.cities.length, data.services.length);
 
   function next() {
     setError(null);
@@ -901,6 +922,11 @@ export function OnboardingWizard() {
                 {error}
               </p>
             )}
+            {planMisfit ? (
+              <p role="alert" data-testid="plan-misfit" className="mt-4 rounded-md bg-[#FFF7EC] px-4 py-3 text-sm text-[#8A5200]">
+                {planMisfit}
+              </p>
+            ) : null}
             <p className="mt-3 text-[12.5px] text-[#B3261E]">
               {data.licenseNumber.trim().length < 4 || !documents.photo_id
                 ? "Add your licence number and a photo ID above to finish."
@@ -912,7 +938,7 @@ export function OnboardingWizard() {
               </button>
               <button
                 type="button"
-                disabled={saving || data.licenseNumber.trim().length < 4 || !documents.photo_id}
+                disabled={saving || Boolean(planMisfit) || data.licenseNumber.trim().length < 4 || !documents.photo_id}
                 onClick={async () => {
                   const ok = await saveProvider(data.plan);
                   if (ok) setDone(true);
