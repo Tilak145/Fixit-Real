@@ -241,7 +241,9 @@ export function AdminStaffTasks({
   });
   const manages = isOwner || power.data === true;
   const people = useQuery({ queryKey: ["admin-staff-task-people", manages], queryFn: loadPeople, enabled: manages });
-  const [personFilter, setPersonFilter] = useState<string>("all");
+  // A task belongs to the person it was given to, so the list opens on your
+  // own. Someone who hands out work can switch to the tasks they gave others.
+  const [personFilter, setPersonFilter] = useState<string>("mine");
   const [showDone, setShowDone] = useState(false);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["admin-staff-tasks"] });
@@ -280,7 +282,11 @@ export function AdminStaffTasks({
   }, [people.data, selfId]);
 
   const all = tasks.data ?? [];
-  const mine = manages && personFilter !== "all" ? all.filter((task) => task.assigned_to === personFilter) : all;
+  const mine = !manages
+    ? all
+    : personFilter === "all"
+      ? all.filter((task) => task.assigned_to !== selfId)
+      : all.filter((task) => task.assigned_to === (personFilter === "mine" ? selfId : personFilter));
   const open = mine.filter((task) => task.status === "open").sort(byUrgency);
   const done = mine
     .filter((task) => task.status === "done")
@@ -329,11 +335,15 @@ export function AdminStaffTasks({
             <ClipboardCheck className="h-5 w-5 text-primary" aria-hidden="true" />
             <div>
               <CardTitle className="text-base">
-                {manages ? (personFilter === "all" ? "This week, everyone" : `This week · ${nameOf(personFilter)}`) : "Your week"}
+                {!manages || personFilter === "mine"
+                  ? "Your week"
+                  : personFilter === "all"
+                    ? "Tasks given to others"
+                    : `This week · ${nameOf(personFilter)}`}
               </CardTitle>
               <p className="pt-1 text-[12.5px] text-muted-foreground">
-                {manages
-                  ? "Day by day. Staff see only the tasks given to them."
+                {manages && personFilter !== "mine"
+                  ? "Day by day. Each task is seen only by the person it was given to, and by whoever gave it."
                   : "Day by day. Mark each one done when you finish it."}
               </p>
             </div>
@@ -470,9 +480,23 @@ function PeopleSummary({
     <Card>
       <CardHeader className="space-y-0 border-b p-5">
         <CardTitle className="text-base">Workload by person</CardTitle>
-        <p className="pt-1 text-[12.5px] text-muted-foreground">Choose a person to see only their tasks.</p>
+        <p className="pt-1 text-[12.5px] text-muted-foreground">Your own tasks, or the ones you gave to someone else.</p>
       </CardHeader>
       <CardContent className="grid gap-2 p-5 sm:grid-cols-2 xl:grid-cols-3">
+        <button
+          type="button"
+          onClick={() => onSelect("mine")}
+          aria-pressed={selected === "mine"}
+          className={cn(
+            "rounded-lg border px-3.5 py-3 text-left transition hover:bg-muted/40",
+            selected === "mine" ? "border-primary bg-primary/5" : "border-border",
+          )}
+        >
+          <span className="block font-semibold">Your tasks</span>
+          <span className="block text-[12.5px] text-muted-foreground">
+            {tasks.filter((task) => task.status === "open" && task.assigned_to === selfId).length} open
+          </span>
+        </button>
         <button
           type="button"
           onClick={() => onSelect("all")}
@@ -482,12 +506,12 @@ function PeopleSummary({
             selected === "all" ? "border-primary bg-primary/5" : "border-border",
           )}
         >
-          <span className="block font-semibold">Everyone</span>
+          <span className="block font-semibold">Given to others</span>
           <span className="block text-[12.5px] text-muted-foreground">
-            {tasks.filter((task) => task.status === "open").length} open
+            {tasks.filter((task) => task.status === "open" && task.assigned_to !== selfId).length} open
           </span>
         </button>
-        {people.map((person) => {
+        {people.filter((person) => person.user_id !== selfId).map((person) => {
           const theirs = tasks.filter((task) => task.assigned_to === person.user_id);
           const open = theirs.filter((task) => task.status === "open");
           const late = open.filter((task) => task.due_on && task.due_on < now).length;

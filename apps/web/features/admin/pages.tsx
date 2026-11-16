@@ -309,7 +309,28 @@ function ResourceTable({ table, label, listColumns, primaryKey, select }: {
           <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#E9F1FB] text-[11px] font-bold text-[#1565C0]">
             {initials(text)}
           </span>
-          <span className="truncate font-semibold">{text}</span>
+          {/* A business's name opens the profile customers see. Only approved
+              businesses have one, so the others say why there is nothing to open. */}
+          {table === "providers" && column === "business_name" && typeof row.id === "string" ? (
+            row.status === "approved" ? (
+              <a
+                href={`/pros/${row.id}`}
+                target="_blank"
+                rel="noreferrer"
+                data-testid="open-pro-profile"
+                title="Open this business's public profile in a new tab"
+                className="truncate font-semibold text-primary hover:underline"
+              >
+                {text}
+              </a>
+            ) : (
+              <span className="truncate font-semibold" title="No public profile yet: customers only see approved businesses">
+                {text}
+              </span>
+            )
+          ) : (
+            <span className="truncate font-semibold">{text}</span>
+          )}
         </span>
       );
     }
