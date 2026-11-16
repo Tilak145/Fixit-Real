@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { Crown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { currentPrice } from "@/lib/payments-price";
-import { stateInfo } from "@/lib/states";
+import { stateFromAddress, stateInfo } from "@/lib/states";
+import { stateName } from "@/lib/city-label";
+import { SITE_EMAIL } from "@/lib/site-contact";
 import { listPaymentProducts, type PaymentProduct } from "@/lib/payments";
 import { CheckoutButton } from "@/components/payments";
 import { useAuth } from "@/lib/auth-context";
@@ -123,10 +125,30 @@ export function OnboardingWizard() {
     logoUrl: "",
   });
 
-  const [cityInput, setCityInput] = useState("");
   const set = (patch: Partial<WizardData>) => setData((d) => ({ ...d, ...patch }));
-  // The cities the owner has added, offered in place of free-text entry.
-  const { cities } = useCities();
+  // The cities the owner has added. A pro picks a state, then one of the cities
+  // FixIt serves there: nothing is typed, so a service area is always a city a
+  // customer can actually choose, spelled the same way.
+  const { cities, isLoading: citiesLoading } = useCities();
+  const [areaState, setAreaState] = useState("");
+  const [areaCity, setAreaCity] = useState("");
+  const activeCities = cities.filter((city) => city.is_active);
+  const stateOf = (city: { label: string; state: string }) => city.state || stateFromAddress(city.label) || "";
+  const servedStates = [...new Set(activeCities.map(stateOf).filter(Boolean))].sort();
+  const chosenState = servedStates.includes(areaState) ? areaState : servedStates[0] ?? "";
+  const citiesToOffer = activeCities.filter(
+    (city) => stateOf(city) === chosenState && !data.cities.includes(city.label),
+  );
+  // A city that is no longer on the owner's list at all (removed, or typed
+  // before the list existed) is dropped, so it is not saved again.
+  const listedKey = cities.map((city) => city.label).join("|");
+  useEffect(() => {
+    if (cities.length === 0) return;
+    const listed = new Set(cities.map((city) => city.label));
+    setData((d) => (d.cities.every((c) => listed.has(c)) ? d : { ...d, cities: d.cities.filter((c) => listed.has(c)) }));
+    // listedKey stands in for the list so the effect does not re-run on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listedKey, data.cities]);
 
   // The two documents the wizard has always shown a button for. Held here so
   // the slot shows the file name and a link once it is stored.
@@ -587,9 +609,7 @@ export function OnboardingWizard() {
             </div>
             <h3 className="mb-1 mt-6 text-center font-display text-[20px] font-semibold">Service Area</h3>
             <p className="mb-4 text-center text-[13px] text-muted-foreground">
-              {cities.length > 0
-                ? "Select the cities you want to receive leads from."
-                : "Select the areas you want to receive leads from."}
+              Pick your state, then each city you want to receive leads from.
             </p>
             <div className="mb-3 flex flex-wrap gap-2">
               {data.cities.map((c) => (
@@ -606,40 +626,67 @@ export function OnboardingWizard() {
             {/* The owner's city list is the authority once it has one, so a pro
                 picks the same spelling a customer's request will carry. Free
                 text stays for the moment the list is empty or offline. */}
-            {cities.length > 0 ? (
-              <select
-                className={inputClass}
-                value=""
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v && !data.cities.includes(v)) set({ cities: [...data.cities, v] });
-                }}
-              >
-                <option value="">Add a city you serve…</option>
-                {cities
-                  .filter((city) => city.is_active && !data.cities.includes(city.label))
-                  .map((city) => (
-                    <option key={city.label} value={city.label}>
-                      {city.label}
-                    </option>
-                  ))}
-              </select>
+            {servedStates.length > 0 ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] sm:items-end">
+                  <label className="grid gap-1.5 text-[13px] font-semibold text-foreground/80">
+                    State
+                    <select
+                      className={inputClass}
+                      value={chosenState}
+                      onChange={(e) => {
+                        setAreaState(e.target.value);
+                        setAreaCity("");
+                      }}
+                    >
+                      {servedStates.map((code) => (
+                        <option key={code} value={code}>
+                          {stateName(code) ?? code}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1.5 text-[13px] font-semibold text-foreground/80">
+                    City
+                    <select
+                      className={inputClass}
+                      value={areaCity}
+                      onChange={(e) => setAreaCity(e.target.value)}
+                      disabled={citiesToOffer.length === 0}
+                    >
+                      <option value="">
+                        {citiesToOffer.length === 0 ? "You have added every city here" : "Choose a city…"}
+                      </option>
+                      {citiesToOffer.map((city) => (
+                        <option key={city.label} value={city.label}>
+                          {city.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    data-testid="add-service-city"
+                    disabled={!areaCity}
+                    onClick={() => {
+                      if (areaCity && !data.cities.includes(areaCity)) set({ cities: [...data.cities, areaCity] });
+                      setAreaCity("");
+                    }}
+                    className="h-[46px] rounded-md bg-primary px-5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                  >
+                    Add city
+                  </button>
+                </div>
+                <p className="mt-2 text-[12.5px] text-muted-foreground">
+                  Only the cities FixIt serves today are listed. Is yours missing? Write to {SITE_EMAIL}.
+                </p>
+              </>
             ) : (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const v = cityInput.trim();
-                  if (v && !data.cities.includes(v)) set({ cities: [...data.cities, v] });
-                  setCityInput("");
-                }}
-              >
-                <input
-                  className={inputClass}
-                  placeholder="Search and add cities…"
-                  value={cityInput}
-                  onChange={(e) => setCityInput(e.target.value)}
-                />
-              </form>
+              <p className="rounded-md border border-border bg-muted/40 px-4 py-3 text-[13px] text-muted-foreground">
+                {citiesLoading
+                  ? "Loading the cities FixIt serves…"
+                  : "The city list could not be loaded. Check your connection and reload the page."}
+              </p>
             )}
             <Nav onBack={back} onNext={next} nextDisabled={data.services.length === 0 || data.cities.length === 0} />
           </>
