@@ -2758,6 +2758,14 @@ export function ProviderDashboard() {
                       Open Payments &amp; Plan from the sidebar.
                     </li>
                   </ul>
+                  <a
+                    href="/help#professionals"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-block text-[13px] font-semibold text-primary hover:underline"
+                  >
+                    See all common questions
+                  </a>
                 </Panel>
               </div>
             </div>

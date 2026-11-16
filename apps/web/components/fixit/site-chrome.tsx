@@ -362,6 +362,9 @@ export function SiteFooter() {
           <SectionLink id="how-it-works" className="mb-2 block text-sm hover:text-white">
             How It Works
           </SectionLink>
+          <Link href="/help" className="mb-2 block text-sm hover:text-white">
+            Common questions
+          </Link>
           <Link href="/for-businesses" className="mb-2 block text-sm hover:text-white">
             Join as a pro
           </Link>

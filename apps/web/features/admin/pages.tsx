@@ -66,6 +66,7 @@ import { AdminTrialReminders } from "./trial-reminders";
 import { AdminDispatch } from "./dispatch";
 import { AdminServiceDemand } from "./service-demand";
 import { AdminProLookup } from "./pro-lookup";
+import { AdminCities } from "./cities";
 import { AdminSignIn } from "./admin-signin";
 import { StatusPill, humanize } from "./ui";
 
@@ -877,7 +878,8 @@ export function AdminPage() {
             />
           ) : null}
           {section === "activity" ? <AdminActivity /> : null}
-          {resource ? (
+          {section === "service_cities" && isOwner ? <AdminCities /> : null}
+          {resource && resource.table !== "service_cities" ? (
             <ResourceTable
               table={resource.table}
               label={resource.label}
