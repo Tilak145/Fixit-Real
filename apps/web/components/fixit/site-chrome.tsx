@@ -26,6 +26,7 @@ import { rememberCity, readRememberedCity, resolveCity } from "@/lib/city-choice
  */
 function CityPicker({ city }: { city?: string | null }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { cities } = useCities();
   const active = cities.filter((entry) => entry.is_active).map((entry) => entry.label);
   const activeKey = active.join("|");
@@ -60,7 +61,10 @@ function CityPicker({ city }: { city?: string | null }) {
   function choose(label: string) {
     setSelected(label);
     rememberCity(label);
-    router.push("/?city=" + encodeURIComponent(label));
+    // On a service's list the visitor stays there and sees the new city's
+    // professionals; anywhere else the home page shows the city.
+    const base = pathname?.startsWith("/services/") ? pathname : "/";
+    router.push(base + "?city=" + encodeURIComponent(label));
   }
 
   return (

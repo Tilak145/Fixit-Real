@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, Check, FileText, Lock, MapPin, Star } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/fixit/site-chrome";
 import { ProCard } from "@/components/fixit/pro-card";
-import { listCategories, listPros, listCategoryProCounts, listCities, isBackendConfigured } from "@/lib/fixit-server";
+import { listCategories, listPros, listCategoryProCounts, resolveVisitorCity, isBackendConfigured } from "@/lib/fixit-server";
 import { ServiceIcon, CORE_CATEGORIES } from "@/components/fixit/service-icons";
 import { HeroSearch } from "@/components/fixit/hero-search";
 
@@ -18,25 +18,22 @@ async function getHomeData(cityParam?: string) {
       chosenCity: null as string | null,
     };
   }
-  const [categories, pros, counts, cities] = await Promise.all([
+  // Only the cities the owner has made bookable are offered here. The city the
+  // visitor is shopping in is the one in the URL, else the one they picked
+  // before, else the first city served.
+  const { cities, chosenCity } = await resolveVisitorCity(cityParam);
+  const [categories, localPros, counts] = await Promise.all([
     listCategories(),
-    listPros(),
-    listCategoryProCounts(),
-    listCities(),
+    // Top pros are the ones who cover the chosen city, so "near you" is true.
+    listPros(chosenCity ? { city: chosenCity } : {}),
+    listCategoryProCounts(chosenCity),
   ]);
   // Always show at least the ten launch categories, in the design's order.
   const merged = CORE_CATEGORIES.map((c, i) => {
     const db = categories.find((d) => d.slug === c.slug);
     return { ...(db ?? { ...c, icon: c.slug, sort_order: i }), pros: counts[c.slug] ?? 0 };
   });
-  // Only the cities the owner has made bookable are offered here.
-  const offered = cities.filter((city) => city.is_active).map((city) => ({ label: city.label, is_active: city.is_active }));
-  // The city the visitor is shopping in: the one in the URL, or the first they
-  // serve. It decides which professionals are shown first and pre-fills the search.
-  const activeLabels = offered.map((city) => city.label);
-  const chosenCity = cityParam && activeLabels.includes(cityParam) ? cityParam : activeLabels[0] ?? null;
-  // Top pros are the ones who cover the chosen city, so "near you" is true.
-  const localPros = chosenCity ? await listPros({ city: chosenCity }) : pros;
+  const offered = cities.map((city) => ({ label: city.label, is_active: city.is_active }));
   return {
     configured: true as const,
     categories: merged,
@@ -115,7 +112,9 @@ export default async function HomePage({
   const { city: cityParam } = await searchParams;
   const { configured, categories, pros, cities, chosenCity } = await getHomeData(cityParam);
   // Point "see more" at a category that has professionals behind it.
-  const browseHref = `/services/${(categories.find((c) => c.pros > 0) ?? categories[0]).slug}`;
+  // Service links carry the city, so the list they open is that city's.
+  const cityQuery = chosenCity ? `?city=${encodeURIComponent(chosenCity)}` : "";
+  const browseHref = `/services/${(categories.find((c) => c.pros > 0) ?? categories[0]).slug}${cityQuery}`;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -180,7 +179,7 @@ export default async function HomePage({
           {categories.map((c) => (
             <Link
               key={c.slug}
-              href={`/services/${c.slug}`}
+              href={`/services/${c.slug}${cityQuery}`}
               className="group flex min-h-[52px] items-center gap-2.5 rounded-xl border border-border bg-card px-2.5 py-2 outline-none ring-ring transition hover:border-primary hover:shadow-md focus-visible:ring-2 sm:px-3"
             >
               <span

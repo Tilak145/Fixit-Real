@@ -17,6 +17,11 @@
  */
 
 export const CITY_STORAGE_KEY = "fixit:city";
+/**
+ * The same choice as a cookie, so the server knows the visitor's city on pages
+ * whose link does not name one and never shows another city's professionals.
+ */
+export const CITY_COOKIE = "fixit_city";
 
 export function resolveCity(
   active: string[],
@@ -46,6 +51,11 @@ export function rememberCity(label: string): void {
     window.localStorage.setItem(CITY_STORAGE_KEY, label);
   } catch {
     // A browser with storage disabled still works; the choice just is not kept.
+  }
+  try {
+    document.cookie = `${CITY_COOKIE}=${encodeURIComponent(label)}; path=/; max-age=31536000; samesite=lax`;
+  } catch {
+    // Cookies blocked: links that name the city still work.
   }
 }
 

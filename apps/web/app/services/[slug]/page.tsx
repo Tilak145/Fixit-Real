@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { SiteHeader, SiteFooter } from "@/components/fixit/site-chrome";
 import { ProResults } from "@/components/fixit/pro-results";
 import { ServiceWaitlist } from "@/components/fixit/service-waitlist";
-import { listCategories, listPros, getCategory } from "@/lib/fixit-server";
+import { listCategories, listPros, getCategory, resolveVisitorCity } from "@/lib/fixit-server";
 
 export const dynamic = "force-dynamic";
 
@@ -24,23 +24,34 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ServiceCategoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ city?: string }>;
 }) {
   const { slug } = await params;
   const category = await loadCategory(slug);
   if (!category) notFound();
 
-  const [pros, categories] = await Promise.all([listPros({ categorySlug: slug }), listCategories()]);
+  // Only professionals who serve the visitor's city are listed: someone
+  // shopping in Hudson must not be shown businesses that only work in Akron.
+  const { chosenCity } = await resolveVisitorCity((await searchParams).city);
+  const [pros, categories] = await Promise.all([
+    listPros({ categorySlug: slug, ...(chosenCity ? { city: chosenCity } : {}) }),
+    listCategories(),
+  ]);
+  const cityQuery = chosenCity ? `?city=${encodeURIComponent(chosenCity)}` : "";
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <SiteHeader />
+      <SiteHeader city={chosenCity} />
       <section className="bg-secondary px-6 py-12 text-white">
         <div className="mx-auto max-w-[1280px]">
-          <h1 className="mb-2 font-display text-4xl font-bold">{category.name} Services</h1>
+          <h1 className="mb-2 font-display text-4xl font-bold">
+            {category.name} Services{chosenCity ? ` in ${chosenCity}` : ""}
+          </h1>
           <p className="text-[#DCE6F2]">
-            Trusted {category.name.toLowerCase()} professionals near you, ready to quote your job.
+            Trusted {category.name.toLowerCase()} professionals {chosenCity ? `who serve ${chosenCity}` : "near you"}, ready to quote your job.
           </p>
         </div>
       </section>
@@ -50,7 +61,7 @@ export default async function ServiceCategoryPage({
           {categories.map((c) => (
             <Link
               key={c.slug}
-              href={`/services/${c.slug}`}
+              href={`/services/${c.slug}${cityQuery}`}
               className={`rounded-full border px-4 py-2 text-[13px] font-bold ${
                 c.slug === slug
                   ? "border-primary bg-primary text-primary-foreground"
@@ -69,7 +80,7 @@ export default async function ServiceCategoryPage({
                 We are signing up pros here
               </span>
               <h2 className="mb-2 font-display text-2xl font-semibold">
-                No {category.name.toLowerCase()} professional serves this area yet
+                No {category.name.toLowerCase()} professional serves {chosenCity ?? "this area"} yet
               </h2>
               <p className="mx-auto mb-6 max-w-[560px] text-sm leading-relaxed text-muted-foreground">
                 FixIt only lists a business after someone has checked the business details, so there is nobody to
@@ -80,7 +91,7 @@ export default async function ServiceCategoryPage({
             <ServiceWaitlist slug={category.slug} name={category.name} />
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
-                href={`/request?service=${category.slug}`}
+                href={`/request?service=${category.slug}${chosenCity ? `&city=${encodeURIComponent(chosenCity)}` : ""}`}
                 className="rounded-md bg-accent px-6 py-3 text-sm font-bold text-accent-foreground hover:bg-accent/90"
               >
                 Post the job now

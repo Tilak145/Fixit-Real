@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cookies } from "next/headers";
+import { CITY_COOKIE, resolveCity } from "@/lib/city-choice";
 import { getSupabase } from "@/lib/supabase";
 import { getServerPublicSupabase } from "@/lib/supabase-public-server";
 import type { ProSummary, Review, ServiceCategory, ServiceCity } from "@/lib/fixit";
@@ -60,6 +62,26 @@ export async function listCities(): Promise<ServiceCity[]> {
   return (data ?? []) as ServiceCity[];
 }
 
+/**
+ * The city this visitor is shopping in, decided on the server: the city in the
+ * link, else the one they picked before (the cookie), else the first city the
+ * owner offers. Every page that lists professionals uses this one answer, so a
+ * visitor in Hudson is never shown another city's professionals.
+ */
+export async function resolveVisitorCity(
+  cityParam?: string | null,
+): Promise<{ cities: ServiceCity[]; chosenCity: string | null }> {
+  const cities = (await listCities()).filter((city) => city.is_active);
+  let remembered: string | null = null;
+  try {
+    const raw = (await cookies()).get(CITY_COOKIE)?.value;
+    remembered = raw ? decodeURIComponent(raw) : null;
+  } catch {
+    remembered = null;
+  }
+  return { cities, chosenCity: resolveCity(cities.map((city) => city.label), cityParam, remembered) };
+}
+
 export async function getCategory(slug: string): Promise<ServiceCategory | null> {
   const categories = await listCategories();
   return categories.find((category) => category.slug === slug) ?? null;
@@ -82,6 +104,19 @@ export async function listPros(filter: ProFilter = {}): Promise<ProSummary[]> {
     .eq("status", "approved")
     .order("rating", { ascending: false })
     .limit(24);
+  // A chosen city narrows the list first, in the query itself, so a visitor
+  // shopping in Kent sees only professionals who serve Kent, however many
+  // businesses the other cities have.
+  if (filter.city) {
+    const { data: areaMatches, error: areaError } = await supabase
+      .from("provider_service_areas")
+      .select("provider_id")
+      .eq("city", filter.city);
+    if (areaError) throw new Error(areaError.message);
+    const covered = (areaMatches ?? []).map((row) => row.provider_id as string);
+    if (covered.length === 0) return [];
+    query = query.in("id", covered);
+  }
   if (filter.categorySlug) {
     const { data: ids, error: idsError } = await supabase
       .from("provider_services")
@@ -94,21 +129,8 @@ export async function listPros(filter: ProFilter = {}): Promise<ProSummary[]> {
   }
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  let rows = (data ?? []) as Omit<ProSummary, "city">[];
+  const rows = (data ?? []) as Omit<ProSummary, "city">[];
   if (rows.length === 0) return [];
-  // A chosen city narrows the list before anything else is read, so a visitor
-  // shopping in Kent does not see Akron-only professionals at the top.
-  if (filter.city) {
-    const { data: areaMatches, error: areaError } = await supabase
-      .from("provider_service_areas")
-      .select("provider_id")
-      .eq("city", filter.city)
-      .in("provider_id", rows.map((row) => row.id));
-    if (areaError) throw new Error(areaError.message);
-    const covered = new Set((areaMatches ?? []).map((row) => row.provider_id as string));
-    rows = rows.filter((row) => covered.has(row.id));
-    if (rows.length === 0) return [];
-  }
   const ids = rows.map((row) => row.id);
   const [{ data: areaRows }, { data: hourRows }] = await Promise.all([
     supabase.from("provider_service_areas").select("provider_id,city").in("provider_id", ids),
@@ -151,7 +173,9 @@ export async function listPros(filter: ProFilter = {}): Promise<ProSummary[]> {
   const withAvailability = rows.map((row) => ({
     ...row,
     verified: verifiedIds.has(row.id),
-    city: cityByProvider.get(row.id) ?? "Akron, OH",
+    // Everyone in a city's list serves that city, so the card names it rather
+    // than whichever of the business's cities happened to be read last.
+    city: filter.city ?? cityByProvider.get(row.id) ?? "Akron, OH",
     hours: hoursByProvider.get(row.id) ?? [],
     placement: placementByProvider.get(row.id),
   }));
@@ -296,7 +320,7 @@ export async function listProReviews(proId: string): Promise<Review[]> {
  * The home grid uses it to keep a category with no one behind it from looking
  * bookable.
  */
-export async function listCategoryProCounts(): Promise<Record<string, number>> {
+export async function listCategoryProCounts(city?: string | null): Promise<Record<string, number>> {
   const supabase = await publicClient();
   if (!supabase) return {};
   const { data: providers, error } = await supabase
@@ -304,8 +328,19 @@ export async function listCategoryProCounts(): Promise<Record<string, number>> {
     .select("id")
     .eq("status", "approved");
   if (error) throw new Error(error.message);
-  const ids = (providers ?? []).map((row) => row.id as string);
+  let ids = (providers ?? []).map((row) => row.id as string);
   if (ids.length === 0) return {};
+  // With a city chosen, "3 local pros" counts only those who serve that city.
+  if (city) {
+    const { data: areas, error: areasError } = await supabase
+      .from("provider_service_areas")
+      .select("provider_id")
+      .eq("city", city);
+    if (areasError) throw new Error(areasError.message);
+    const covered = new Set((areas ?? []).map((row) => row.provider_id as string));
+    ids = ids.filter((id) => covered.has(id));
+    if (ids.length === 0) return {};
+  }
   const { data: services, error: servicesError } = await supabase
     .from("provider_services")
     .select("category_slug")
