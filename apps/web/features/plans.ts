@@ -38,7 +38,7 @@ export const PLANS: Plan[] = [
     features: [
       "First month free, then $99–$399 a month",
       "Unlimited lead access in your area",
-      "Offer 1 service (up to 5 cities)",
+      "Offer up to 2 services (up to 5 cities)",
       "Your profile in search results",
       "Verified licence badge",
       "New leads appear in your dashboard instantly",
@@ -99,7 +99,7 @@ export const PAID_PLANS = PLANS.filter((plan) => plan.price > 0);
  */
 export function planLimits(key: string): { cities: number | null; services: number | null } {
   if (key === "business") return { cities: null, services: null };
-  if (key === "founding") return { cities: 5, services: 1 };
+  if (key === "founding") return { cities: 5, services: 2 };
   if (key === "professional") return { cities: 5, services: 3 };
   return { cities: 1, services: 2 };
 }
