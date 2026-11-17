@@ -133,16 +133,21 @@ async function loadMatches(
   if (filter.categorySlug) query = query.eq("provider_services.category_slug", filter.categorySlug);
   if (filter.plans?.length) query = query.in("plan", filter.plans);
   // A plan is only chosen at sign-up; a paid one is proved by a live subscription.
+  // The paying ids are applied after the read, not sent in the query, so the
+  // request stays small however many professionals pay.
+  let payingIds: Set<string> | null = null;
   if (filter.paidOnly) {
     const { data: paying, error: payingError } = await supabase.rpc("paying_provider_ids");
     if (payingError) throw new Error(payingError.message);
-    const payingIds = (paying ?? []) as string[];
-    if (payingIds.length === 0) return [];
-    query = query.in("id", payingIds);
+    payingIds = new Set((paying ?? []) as string[]);
+    if (payingIds.size === 0) return [];
   }
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return ((data ?? []) as unknown as Array<Record<string, unknown>>).map((row) => {
+  const rows = ((data ?? []) as unknown as Array<Record<string, unknown>>).filter(
+    (row) => !payingIds || payingIds.has(row.id as string),
+  );
+  return rows.map((row) => {
     const {
       provider_availability: hourRows,
       provider_service_areas: _areas,
@@ -382,55 +387,37 @@ export async function listProReviews(proId: string): Promise<Review[]> {
 export async function listCategoryProCounts(city?: string | null): Promise<Record<string, CategoryProCount>> {
   const supabase = await publicClient();
   if (!supabase) return {};
-  const { data: providers, error } = await supabase
-    .from("providers")
-    .select("id,accepting_work,accepts_emergency")
-    .eq("status", "approved");
+  // One query, with the city matched inside it (an inner join) and each
+  // professional's trades and hours read alongside, so no list of every
+  // professional's id is ever sent to the database however many there are.
+  const select = [
+    "id,accepting_work,accepts_emergency",
+    "provider_services(category_slug)",
+    "provider_availability(weekday,start_minute,end_minute)",
+  ];
+  if (city) select.push("provider_service_areas!inner(city)");
+  let query = supabase.from("providers").select(select.join(",")).eq("status", "approved").limit(MATCH_LIMIT);
+  if (city) query = query.eq("provider_service_areas.city", city);
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
-  let ids = (providers ?? []).map((row) => row.id as string);
-  if (ids.length === 0) return {};
-  // With a city chosen, "3 local pros" counts only those who serve that city.
-  if (city) {
-    const { data: areas, error: areasError } = await supabase
-      .from("provider_service_areas")
-      .select("provider_id")
-      .eq("city", city);
-    if (areasError) throw new Error(areasError.message);
-    const covered = new Set((areas ?? []).map((row) => row.provider_id as string));
-    ids = ids.filter((id) => covered.has(id));
-    if (ids.length === 0) return {};
-  }
-  const [{ data: services, error: servicesError }, { data: hourRows, error: hoursError }] = await Promise.all([
-    supabase.from("provider_services").select("provider_id,category_slug").in("provider_id", ids),
-    supabase
-      .from("provider_availability")
-      .select("provider_id,weekday,start_minute,end_minute")
-      .in("provider_id", ids),
-  ]);
-  if (servicesError) throw new Error(servicesError.message);
-  if (hoursError) throw new Error(hoursError.message);
   // The card shows who can be reached this minute, so each professional's
-  // switch and published hours are read alongside the trades they offer.
-  const kept = new Set(ids);
+  // switch and published hours are used alongside the trades they offer.
   const factsByProvider = new Map<string, AvailabilityFacts>();
-  for (const row of providers ?? []) {
-    if (!kept.has(row.id as string)) continue;
-    factsByProvider.set(row.id as string, {
+  const services: { provider_id: string; category_slug: string }[] = [];
+  for (const row of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+    const id = row.id as string;
+    factsByProvider.set(id, {
       acceptingWork: row.accepting_work !== false,
       acceptsEmergency: Boolean(row.accepts_emergency),
-      windows: [],
+      windows: ((row.provider_availability ?? []) as Array<Record<string, number>>).map((hour) => ({
+        weekday: hour.weekday,
+        startMinute: hour.start_minute,
+        endMinute: hour.end_minute,
+      })),
     });
+    for (const service of (row.provider_services ?? []) as Array<{ category_slug: string }>) {
+      services.push({ provider_id: id, category_slug: service.category_slug });
+    }
   }
-  for (const row of hourRows ?? []) {
-    factsByProvider.get(row.provider_id as string)?.windows.push({
-      weekday: row.weekday as number,
-      startMinute: row.start_minute as number,
-      endMinute: row.end_minute as number,
-    });
-  }
-  return countProsByCategory(
-    (services ?? []) as { provider_id: string; category_slug: string }[],
-    factsByProvider,
-    new Date(),
-  );
+  return countProsByCategory(services, factsByProvider, new Date());
 }

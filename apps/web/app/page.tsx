@@ -4,7 +4,7 @@ import { SiteHeader, SiteFooter } from "@/components/fixit/site-chrome";
 import { ProCard } from "@/components/fixit/pro-card";
 import { AutoRefresh } from "@/components/fixit/auto-refresh";
 import { FeaturedProCard } from "@/components/fixit/featured-pro-card";
-import { pickFeatured } from "@/lib/featured-pros";
+import { featuredSeed, pickFeatured } from "@/lib/featured-pros";
 import type { ProSummary } from "@/lib/fixit";
 import { listCategories, listPros, listCategoryProCounts, resolveVisitorCity, isBackendConfigured } from "@/lib/fixit-server";
 import { ServiceIcon, CORE_CATEGORIES } from "@/components/fixit/service-icons";
@@ -36,7 +36,9 @@ async function getHomeData(cityParam?: string) {
     // The featured spots: the plans that pay the most, in the chosen city.
     listPros({ ...cityFilter, plans: ["business", "professional"], paidOnly: true, limit: 60 }),
   ]);
-  const featured = pickFeatured(paidPros);
+  // Paying professionals on the same plan take turns, shuffled every half hour.
+  const turnNow = new Date();
+  const featured = pickFeatured(paidPros, { seed: featuredSeed(turnNow, chosenCity), now: turnNow });
   const featuredIds = new Set(featured.map((pro) => pro.id));
   // Always show at least the ten launch categories, in the design's order.
   const merged = CORE_CATEGORIES.map((c, i) => {
