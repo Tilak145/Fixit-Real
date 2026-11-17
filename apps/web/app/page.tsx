@@ -123,7 +123,7 @@ export default async function HomePage({
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <AutoRefresh everyMinutes={30} />
+      <AutoRefresh everyMinutes={2} />
       <SiteHeader city={chosenCity} />
 
       {/* Hero. The photo stops where the page content stops; on screens wider

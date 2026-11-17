@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
  * A hidden tab does not refresh; when the visitor comes back, the page is
  * refreshed at once if it has been longer than the interval.
  */
-export function AutoRefresh({ everyMinutes = 30 }: { everyMinutes?: number }) {
+export function AutoRefresh({ everyMinutes = 2 }: { everyMinutes?: number }) {
   const router = useRouter();
   const last = useRef(Date.now());
 
