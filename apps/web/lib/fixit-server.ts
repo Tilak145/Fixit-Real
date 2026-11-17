@@ -93,6 +93,8 @@ export interface ProFilter {
   city?: string;
   /** Only professionals on one of these plans. */
   plans?: string[];
+  /** Only professionals with a live paid subscription. */
+  paidOnly?: boolean;
 }
 
 const PRO_FIELDS =
@@ -108,6 +110,14 @@ export async function listPros(filter: ProFilter = {}): Promise<ProSummary[]> {
     .order("rating", { ascending: false })
     .limit(24);
   if (filter.plans?.length) query = query.in("plan", filter.plans);
+  // A plan is only chosen at sign-up; a paid one is proved by a live subscription.
+  if (filter.paidOnly) {
+    const { data: paying, error: payingError } = await supabase.rpc("paying_provider_ids");
+    if (payingError) throw new Error(payingError.message);
+    const payingIds = (paying ?? []) as string[];
+    if (payingIds.length === 0) return [];
+    query = query.in("id", payingIds);
+  }
   // A chosen city narrows the list first, in the query itself, so a visitor
   // shopping in Kent sees only professionals who serve Kent, however many
   // businesses the other cities have.

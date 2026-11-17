@@ -34,7 +34,7 @@ async function getHomeData(cityParam?: string) {
     listPros(cityFilter),
     listCategoryProCounts(chosenCity),
     // The featured spots: the plans that pay the most, in the chosen city.
-    listPros({ ...cityFilter, plans: ["business", "professional"] }),
+    listPros({ ...cityFilter, plans: ["business", "professional"], paidOnly: true }),
   ]);
   const featured = pickFeatured(paidPros);
   const featuredIds = new Set(featured.map((pro) => pro.id));
