@@ -5,7 +5,7 @@ import { planFitProblem, planLimits } from "../features/plans.ts";
 test("the limits match what the database enforces", () => {
   assert.deepEqual(planLimits("starter"), { cities: 1, services: 2 });
   assert.deepEqual(planLimits("professional"), { cities: 5, services: 3 });
-  assert.deepEqual(planLimits("founding"), { cities: 5, services: 2 });
+  assert.deepEqual(planLimits("founding"), { cities: 2, services: 2 });
   assert.deepEqual(planLimits("business"), { cities: null, services: null });
 });
 
