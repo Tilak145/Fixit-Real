@@ -53,7 +53,7 @@ export default async function ProProfilePage({ params }: { params: Promise<{ id:
                     width={900}
                     height={600}
                     loading="lazy"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full bg-white object-contain p-4"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center font-display text-6xl font-bold text-primary/30">

@@ -34,7 +34,7 @@ async function getHomeData(cityParam?: string) {
     listPros(cityFilter),
     listCategoryProCounts(chosenCity),
     // The featured spots: the plans that pay the most, in the chosen city.
-    listPros({ ...cityFilter, plans: ["business", "professional"], paidOnly: true }),
+    listPros({ ...cityFilter, plans: ["business", "professional"], paidOnly: true, limit: 60 }),
   ]);
   const featured = pickFeatured(paidPros);
   const featuredIds = new Set(featured.map((pro) => pro.id));
@@ -319,7 +319,9 @@ export default async function HomePage({
                   See more professionals
                 </Link>
               </div>
-              <div className="flex flex-wrap gap-6">
+              {/* A fixed grid, so a lone last card keeps the size of the others
+                  instead of stretching across the row. */}
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 {pros.map((p) => (
                   <ProCard key={p.id} pro={p} />
                 ))}

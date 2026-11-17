@@ -1439,7 +1439,9 @@ export function ProviderDashboard() {
           <span className="mx-auto mb-2.5 flex h-[84px] w-[84px] items-center justify-center overflow-hidden rounded-full bg-card font-display text-2xl font-bold text-primary ring-4 ring-white/10">
             {pro.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={pro.logo_url} alt="" className="h-full w-full object-cover" />
+              // In a circle the corners of a square logo are clipped, so it is
+              // inset until the whole logo sits inside the circle.
+              <img src={pro.logo_url} alt="" className="h-full w-full bg-white object-contain p-[15%]" />
             ) : (
               pro.business_name.slice(0, 2).toUpperCase()
             )}
@@ -1586,7 +1588,7 @@ export function ProviderDashboard() {
             <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold text-white">
               {pro.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={pro.logo_url} alt="" className="h-full w-full object-cover" />
+                <img src={pro.logo_url} alt="" className="h-full w-full bg-white object-contain p-[15%]" />
               ) : (
                 pro.business_name.slice(0, 2).toUpperCase()
               )}
@@ -2496,7 +2498,7 @@ export function ProviderDashboard() {
                     <span className="flex h-[72px] w-[72px] flex-none items-center justify-center overflow-hidden rounded-xl border border-border bg-muted">
                       {pro.logo_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={pro.logo_url} alt={`${pro.business_name} logo`} className="h-full w-full object-cover" />
+                        <img src={pro.logo_url} alt={`${pro.business_name} logo`} className="h-full w-full bg-white object-contain p-1" />
                       ) : (
                         <span className="font-display text-xl font-bold text-primary/40">
                           {pro.business_name.slice(0, 2).toUpperCase()}

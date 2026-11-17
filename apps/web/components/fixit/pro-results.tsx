@@ -1,13 +1,7 @@
-"use client";
-
-import { useMemo, useState } from "react";
-import { ProCard, factsOf } from "@/components/fixit/pro-card";
-import {
-  compareByAvailability,
-  matchesAvailabilityFilter,
-  type AvailabilityFilter,
-} from "@/lib/fixit-live-availability";
+import Link from "next/link";
+import { ProCard } from "@/components/fixit/pro-card";
 import type { ProSummary } from "@/lib/fixit";
+import type { AvailabilityFilter } from "@/lib/fixit-live-availability";
 
 const FILTERS: Array<{ key: AvailabilityFilter; label: string; help: string }> = [
   { key: "any", label: "All pros", help: "Everyone who works in this trade" },
@@ -16,52 +10,55 @@ const FILTERS: Array<{ key: AvailabilityFilter; label: string; help: string }> =
   { key: "emergency", label: "Emergency now", help: "Taking emergency calls right now" },
 ];
 
+/** A link back to this list with a different filter or page. */
+function listHref(basePath: string, city: string | null, filter: AvailabilityFilter, page: number): string {
+  const params = new URLSearchParams();
+  if (city) params.set("city", city);
+  if (filter !== "any") params.set("when", filter);
+  if (page > 1) params.set("page", String(page));
+  const query = params.toString();
+  return query ? `${basePath}?${query}` : basePath;
+}
+
 /**
- * The list a homeowner actually shops from: a filter that answers "who can come
- * soon", and cards ranked by who can help soonest. The times are judged in the
- * customer's browser so "today" means today for them, and the rule itself lives
- * in one tested place rather than in this component.
+ * The list a homeowner actually shops from. The professionals arrive already
+ * ranked (who can help soonest, then paid placement, then rating) and already
+ * cut to the pages the visitor has opened. The filters and "Show more" are
+ * plain links, so the whole list is ranked on the server and every professional
+ * can be reached however many there are.
  */
-export function ProResults({ pros }: { pros: ProSummary[] }) {
-  const [filter, setFilter] = useState<AvailabilityFilter>("any");
-  // One instant for the whole render, so every card and the sort agree. It is
-  // captured once per mount rather than per card.
-  const now = useMemo(() => new Date(), []);
-
-  const shown = useMemo(
-    () =>
-      pros
-        .filter((pro) => matchesAvailabilityFilter(factsOf(pro), filter, now))
-        .sort((a, b) =>
-          compareByAvailability(
-            { facts: factsOf(a), rating: a.rating ?? 0, placement: a.placement },
-            { facts: factsOf(b), rating: b.rating ?? 0, placement: b.placement },
-            now,
-          ),
-        ),
-    [pros, filter, now],
-  );
-
-  const counts = useMemo(() => {
-    const result: Record<AvailabilityFilter, number> = { any: 0, today: 0, tomorrow: 0, emergency: 0 };
-    for (const key of Object.keys(result) as AvailabilityFilter[]) {
-      result[key] = pros.filter((pro) => matchesAvailabilityFilter(factsOf(pro), key, now)).length;
-    }
-    return result;
-  }, [pros, now]);
-
+export function ProResults({
+  pros,
+  counts,
+  total,
+  filter,
+  page,
+  hasMore,
+  basePath,
+  city,
+}: {
+  pros: ProSummary[];
+  counts: Record<AvailabilityFilter, number>;
+  total: number;
+  filter: AvailabilityFilter;
+  page: number;
+  hasMore: boolean;
+  basePath: string;
+  city: string | null;
+}) {
+  const now = new Date();
   return (
     <div>
       <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Filter by availability">
         {FILTERS.map((option) => {
           const active = filter === option.key;
           return (
-            <button
+            <Link
               key={option.key}
-              type="button"
-              aria-pressed={active}
+              href={listHref(basePath, city, option.key, 1)}
+              scroll={false}
+              aria-current={active ? "true" : undefined}
               title={option.help}
-              onClick={() => setFilter(option.key)}
               className={
                 "rounded-full border px-4 py-2 text-[13px] font-bold transition-colors " +
                 (active
@@ -73,12 +70,12 @@ export function ProResults({ pros }: { pros: ProSummary[] }) {
               <span className={"ml-1.5 tabular-nums " + (active ? "opacity-80" : "text-muted-foreground")}>
                 {counts[option.key]}
               </span>
-            </button>
+            </Link>
           );
         })}
       </div>
 
-      {shown.length === 0 ? (
+      {pros.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center">
           <h2 className="mb-2 font-display text-xl font-semibold">
             {filter === "emergency"
@@ -90,20 +87,38 @@ export function ProResults({ pros }: { pros: ProSummary[] }) {
               ? "Emergency cover depends on who is on shift. Send your request anyway — it reaches every matching pro in your area, and it is flagged so the first one free picks it up."
               : "Try another day, or send your request and matching pros will respond as their hours allow."}
           </p>
-          <button
-            type="button"
-            onClick={() => setFilter("any")}
-            className="mt-5 rounded-md border border-border bg-card px-5 py-2.5 text-sm font-bold text-foreground/80 hover:border-primary"
+          <Link
+            href={listHref(basePath, city, "any", 1)}
+            className="mt-5 inline-block rounded-md border border-border bg-card px-5 py-2.5 text-sm font-bold text-foreground/80 hover:border-primary"
           >
             Show all pros
-          </button>
+          </Link>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-6">
-          {shown.map((pro) => (
-            <ProCard key={pro.id} pro={pro} now={now} />
-          ))}
-        </div>
+        <>
+          {/* A fixed grid: every card is the same size, and a lone last card does
+              not stretch across the row. */}
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {pros.map((pro) => (
+              <ProCard key={pro.id} pro={pro} now={now} />
+            ))}
+          </div>
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <p className="text-[13px] text-muted-foreground">
+              Showing {pros.length} of {total}
+            </p>
+            {hasMore ? (
+              <Link
+                href={listHref(basePath, city, filter, page + 1)}
+                scroll={false}
+                rel="nofollow"
+                className="rounded-md border border-primary px-6 py-3 text-sm font-bold text-primary hover:bg-primary/5"
+              >
+                Show more professionals
+              </Link>
+            ) : null}
+          </div>
+        </>
       )}
     </div>
   );

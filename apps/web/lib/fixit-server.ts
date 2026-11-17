@@ -6,7 +6,12 @@ import { getSupabase } from "@/lib/supabase";
 import { getServerPublicSupabase } from "@/lib/supabase-public-server";
 import type { ProSummary, Review, ServiceCategory, ServiceCity } from "@/lib/fixit";
 import type { AvailabilityWindow } from "@/lib/fixit-availability";
-import { compareByAvailability, type AvailabilityFacts } from "@/lib/fixit-live-availability";
+import {
+  matchesAvailabilityFilter,
+  type AvailabilityFacts,
+  type AvailabilityFilter,
+} from "@/lib/fixit-live-availability";
+import { PAGE_SIZE, countByFilter, placementForPlan, rankPros, takePages } from "@/lib/pro-ranking";
 import type { TrustEvidence } from "@/lib/trust-score";
 import { countProsByCategory, type CategoryProCount } from "@/lib/category-counts";
 
@@ -95,20 +100,37 @@ export interface ProFilter {
   plans?: string[];
   /** Only professionals with a live paid subscription. */
   paidOnly?: boolean;
+  /** How many to return from the ranked list; 24 when not given. */
+  limit?: number;
 }
 
 const PRO_FIELDS =
   "id,business_name,description,rating,review_count,logo_url,years_in_business,status,accepts_emergency,accepting_work,plan";
 
-export async function listPros(filter: ProFilter = {}): Promise<ProSummary[]> {
-  const supabase = await publicClient();
-  if (!supabase) return [];
-  let query = supabase
-    .from("providers")
-    .select(PRO_FIELDS)
-    .eq("status", "approved")
-    .order("rating", { ascending: false })
-    .limit(24);
+/** The most professionals one list reads; the database also stops at its own row cap. */
+const MATCH_LIMIT = 1000;
+
+interface Match extends Omit<ProSummary, "city"> {
+  facts: AvailabilityFacts;
+  placement: number;
+  rating: number;
+}
+
+/**
+ * Every approved professional who fits the filter, with the little needed to rank
+ * them. The city and trade are matched inside the query (an inner join), so no
+ * long list of ids is sent to the database however many professionals there are.
+ */
+async function loadMatches(
+  supabase: NonNullable<Awaited<ReturnType<typeof publicClient>>>,
+  filter: ProFilter,
+): Promise<Match[]> {
+  const select = [PRO_FIELDS, "provider_availability(weekday,start_minute,end_minute)"];
+  if (filter.city) select.push("provider_service_areas!inner(city)");
+  if (filter.categorySlug) select.push("provider_services!inner(category_slug)");
+  let query = supabase.from("providers").select(select.join(",")).eq("status", "approved").limit(MATCH_LIMIT);
+  if (filter.city) query = query.eq("provider_service_areas.city", filter.city);
+  if (filter.categorySlug) query = query.eq("provider_services.category_slug", filter.categorySlug);
   if (filter.plans?.length) query = query.in("plan", filter.plans);
   // A plan is only chosen at sign-up; a paid one is proved by a live subscription.
   if (filter.paidOnly) {
@@ -118,93 +140,116 @@ export async function listPros(filter: ProFilter = {}): Promise<ProSummary[]> {
     if (payingIds.length === 0) return [];
     query = query.in("id", payingIds);
   }
-  // A chosen city narrows the list first, in the query itself, so a visitor
-  // shopping in Kent sees only professionals who serve Kent, however many
-  // businesses the other cities have.
-  if (filter.city) {
-    const { data: areaMatches, error: areaError } = await supabase
-      .from("provider_service_areas")
-      .select("provider_id")
-      .eq("city", filter.city);
-    if (areaError) throw new Error(areaError.message);
-    const covered = (areaMatches ?? []).map((row) => row.provider_id as string);
-    if (covered.length === 0) return [];
-    query = query.in("id", covered);
-  }
-  if (filter.categorySlug) {
-    const { data: ids, error: idsError } = await supabase
-      .from("provider_services")
-      .select("provider_id")
-      .eq("category_slug", filter.categorySlug);
-    if (idsError) throw new Error(idsError.message);
-    const idList = (ids ?? []).map((row) => row.provider_id);
-    if (idList.length === 0) return [];
-    query = query.in("id", idList);
-  }
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  const rows = (data ?? []) as Omit<ProSummary, "city">[];
-  if (rows.length === 0) return [];
-  const ids = rows.map((row) => row.id);
-  const [{ data: areaRows }, { data: hourRows }] = await Promise.all([
-    supabase.from("provider_service_areas").select("provider_id,city").in("provider_id", ids),
-    supabase
-      .from("provider_availability")
-      .select("provider_id,weekday,start_minute,end_minute")
-      .in("provider_id", ids),
+  return ((data ?? []) as unknown as Array<Record<string, unknown>>).map((row) => {
+    const {
+      provider_availability: hourRows,
+      provider_service_areas: _areas,
+      provider_services: _services,
+      ...rest
+    } = row;
+    void _areas;
+    void _services;
+    const hours: AvailabilityWindow[] = ((hourRows ?? []) as Array<Record<string, number>>).map((hour) => ({
+      weekday: hour.weekday,
+      startMinute: hour.start_minute,
+      endMinute: hour.end_minute,
+    }));
+    const pro = rest as unknown as Omit<ProSummary, "city"> & {
+      accepting_work?: boolean | null;
+      accepts_emergency?: boolean | null;
+    };
+    const facts = factsOf({ accepting_work: pro.accepting_work, accepts_emergency: pro.accepts_emergency, hours });
+    return {
+      ...pro,
+      hours,
+      acceptingWork: facts.acceptingWork,
+      acceptsEmergency: facts.acceptsEmergency,
+      facts,
+      placement: placementForPlan(pro.plan),
+      rating: Number(pro.rating ?? 0),
+    };
+  });
+}
+
+/** The professionals a page will show, with the extras a card needs (city, check mark). */
+async function finishPros(
+  supabase: NonNullable<Awaited<ReturnType<typeof publicClient>>>,
+  matches: Match[],
+  city: string | undefined,
+): Promise<ProSummary[]> {
+  if (matches.length === 0) return [];
+  const ids = matches.map((match) => match.id);
+  const [areas, verified] = await Promise.all([
+    city
+      ? Promise.resolve({ data: [] as Array<{ provider_id: string; city: string }> })
+      : supabase.from("provider_service_areas").select("provider_id,city").in("provider_id", ids),
+    // The check mark: set only when staff confirmed both licence and insurance.
+    supabase.from("provider_trust_evidence").select("provider_id,license_checked,insurance_checked").in("provider_id", ids),
   ]);
-  const cityByProvider = new Map((areaRows ?? []).map((area) => [area.provider_id as string, area.city as string]));
-  const hoursByProvider = new Map<string, AvailabilityWindow[]>();
-  for (const row of hourRows ?? []) {
-    const list = hoursByProvider.get(row.provider_id as string) ?? [];
-    list.push({
-      weekday: row.weekday as number,
-      startMinute: row.start_minute as number,
-      endMinute: row.end_minute as number,
-    });
-    hoursByProvider.set(row.provider_id as string, list);
-  }
-  // Placement bought with the plan, and the service area, read from the view
-  // that computes them. A missing row means no plan data, which the comparator
-  // treats as neutral rather than as the lowest placement.
-  const { data: placementRows } = await supabase
-    .from("provider_placement")
-    .select("provider_id,placement")
-    .in("provider_id", ids);
-  const placementByProvider = new Map(
-    (placementRows ?? []).map((row) => [row.provider_id as string, row.placement as number]),
+  const cityByProvider = new Map(
+    ((areas.data ?? []) as Array<{ provider_id: string; city: string }>).map((area) => [area.provider_id, area.city]),
   );
-  // The check mark: set only when staff confirmed both licence and insurance.
-  const { data: verifiedRows } = await supabase
-    .from("provider_trust_evidence")
-    .select("provider_id,license_checked,insurance_checked")
-    .in("provider_id", ids);
   const verifiedIds = new Set(
-    (verifiedRows ?? [])
+    (verified.data ?? [])
       .filter((row) => row.license_checked && row.insurance_checked)
       .map((row) => row.provider_id as string),
   );
-  const withAvailability = rows.map((row) => ({
-    ...row,
-    verified: verifiedIds.has(row.id),
-    // Everyone in a city's list serves that city, so the card names it rather
-    // than whichever of the business's cities happened to be read last.
-    city: filter.city ?? cityByProvider.get(row.id) ?? "Akron, OH",
-    hours: hoursByProvider.get(row.id) ?? [],
-    placement: placementByProvider.get(row.id),
-  }));
+  return matches.map(({ facts, ...match }) => {
+    void facts;
+    return {
+      ...match,
+      verified: verifiedIds.has(match.id),
+      // Everyone in a city's list serves that city, so the card names it rather
+      // than whichever of the business's cities happened to be read last.
+      city: city ?? cityByProvider.get(match.id) ?? "Akron, OH",
+    };
+  });
+}
 
-  // A customer is asking "who can help me soon?", so available professionals
-  // come first, then whoever opens soonest, and rating breaks the tie. Sorting
-  // in the product rather than the query keeps the rule in one testable place.
+export interface ProPage {
+  pros: ProSummary[];
+  /** Everyone who serves the city and trade, before any availability filter. */
+  matched: number;
+  /** How many fit the chosen availability filter, over the whole list. */
+  total: number;
+  /** How many fit each availability filter, over the whole list. */
+  counts: Record<AvailabilityFilter, number>;
+  hasMore: boolean;
+}
+
+/**
+ * A page of professionals for a city and trade. Every match is ranked first
+ * (who can help soonest, then paid placement, then rating) and the page is taken
+ * from that ranked list, so a paying professional with no reviews is never
+ * dropped just because better-rated ones exist. `page` 2 means the first two
+ * pages, so "Show more" adds to what is already on screen.
+ */
+export async function searchPros(
+  filter: ProFilter = {},
+  options: { page?: number; pageSize?: number; when?: AvailabilityFilter | "all" } = {},
+): Promise<ProPage> {
+  const empty: ProPage = { pros: [], matched: 0, total: 0, counts: { any: 0, today: 0, tomorrow: 0, emergency: 0 }, hasMore: false };
+  const supabase = await publicClient();
+  if (!supabase) return empty;
   const now = new Date();
-  return withAvailability.sort((a, b) =>
-    compareByAvailability(
-      { facts: factsOf(a), rating: a.rating ?? 0, placement: a.placement },
-      { facts: factsOf(b), rating: b.rating ?? 0, placement: b.placement },
-      now,
-    ),
-  );
+  const all = await loadMatches(supabase, filter);
+  if (all.length === 0) return empty;
+  const when = options.when ?? "all";
+  const fitting = when === "all" ? all : all.filter((match) => matchesAvailabilityFilter(match.facts, when, now));
+  const { items, hasMore } = takePages(rankPros(fitting, now), options.page ?? 1, options.pageSize ?? PAGE_SIZE);
+  return {
+    pros: await finishPros(supabase, items, filter.city),
+    matched: all.length,
+    total: fitting.length,
+    counts: countByFilter(all, now),
+    hasMore,
+  };
+}
+
+export async function listPros(filter: ProFilter = {}): Promise<ProSummary[]> {
+  return (await searchPros(filter, { page: 1, pageSize: filter.limit ?? 24, when: "all" })).pros;
 }
 
 /** The availability facts of a provider row, as the shared rule expects them. */

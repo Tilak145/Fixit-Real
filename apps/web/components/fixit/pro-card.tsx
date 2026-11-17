@@ -64,7 +64,7 @@ export function AvailabilityBadge({ pro, now }: { pro: ProSummary; now: Date }) 
 
 export function ProCard({ pro, now = new Date() }: { pro: ProSummary; now?: Date }) {
   return (
-    <div className="flex min-w-[260px] flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
+    <div className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
       <div className="relative h-[180px] bg-muted">
         {pro.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -74,7 +74,9 @@ export function ProCard({ pro, now = new Date() }: { pro: ProSummary; now?: Date
             width={520}
             height={360}
             loading="lazy"
-            className="h-full w-full object-cover"
+            // The whole logo, never cropped: businesses upload square or wide
+            // logos, and filling the box cut parts of them off.
+            className="h-full w-full bg-white object-contain p-3"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center font-display text-3xl font-bold text-primary/40">

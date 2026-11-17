@@ -500,7 +500,7 @@ export function OnboardingWizard() {
               <span className="flex h-[68px] w-[68px] flex-none items-center justify-center overflow-hidden rounded-[10px] border border-border bg-muted">
                 {data.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={data.logoUrl} alt="Your business logo" className="h-full w-full object-cover" />
+                  <img src={data.logoUrl} alt="Your business logo" className="h-full w-full bg-white object-contain p-1" />
                 ) : (
                   <span className="font-display text-lg font-bold text-primary/40">
                     {(data.businessName.slice(0, 2) || "LO").toUpperCase()}

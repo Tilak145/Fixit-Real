@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { SiteHeader, SiteFooter } from "@/components/fixit/site-chrome";
 import { ProResults } from "@/components/fixit/pro-results";
 import { ServiceWaitlist } from "@/components/fixit/service-waitlist";
-import { listCategories, listPros, getCategory, resolveVisitorCity } from "@/lib/fixit-server";
+import { listCategories, searchPros, getCategory, resolveVisitorCity } from "@/lib/fixit-server";
+import { parseFilter, parsePage } from "@/lib/pro-ranking";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default async function ServiceCategoryPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ city?: string }>;
+  searchParams: Promise<{ city?: string; when?: string; page?: string }>;
 }) {
   const { slug } = await params;
   const category = await loadCategory(slug);
@@ -35,9 +36,12 @@ export default async function ServiceCategoryPage({
 
   // Only professionals who serve the visitor's city are listed: someone
   // shopping in Hudson must not be shown businesses that only work in Akron.
-  const { chosenCity } = await resolveVisitorCity((await searchParams).city);
-  const [pros, categories] = await Promise.all([
-    listPros({ categorySlug: slug, ...(chosenCity ? { city: chosenCity } : {}) }),
+  const query = await searchParams;
+  const { chosenCity } = await resolveVisitorCity(query.city);
+  const filter = parseFilter(query.when);
+  const page = parsePage(query.page);
+  const [result, categories] = await Promise.all([
+    searchPros({ categorySlug: slug, ...(chosenCity ? { city: chosenCity } : {}) }, { page, when: filter }),
     listCategories(),
   ]);
   const cityQuery = chosenCity ? `?city=${encodeURIComponent(chosenCity)}` : "";
@@ -73,7 +77,7 @@ export default async function ServiceCategoryPage({
           ))}
         </div>
 
-        {pros.length === 0 ? (
+        {result.matched === 0 ? (
           <div className="rounded-xl border border-border bg-card p-8 sm:p-10">
             <div className="mx-auto max-w-[720px] text-center">
               <span className="mb-4 inline-flex rounded-full bg-[#FFF7EC] px-3 py-1 text-[12px] font-bold uppercase tracking-wide text-[#B26A00]">
@@ -105,7 +109,16 @@ export default async function ServiceCategoryPage({
             </div>
           </div>
         ) : (
-          <ProResults pros={pros} />
+          <ProResults
+            pros={result.pros}
+            counts={result.counts}
+            total={result.total}
+            filter={filter}
+            page={page}
+            hasMore={result.hasMore}
+            basePath={`/services/${slug}`}
+            city={chosenCity}
+          />
         )}
       </section>
       <SiteFooter />
