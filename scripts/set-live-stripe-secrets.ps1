@@ -10,7 +10,8 @@
 #   2. the webhook signing secret       (starts with whsec_)
 #   3. the site address                 (press Enter to accept https://www.fixitls.com)
 #
-# Needs the Supabase command line signed in once:  npx.cmd supabase login
+# Needs the Supabase command line signed in once:  npx.cmd --yes supabase login
+# (--yes answers npx's "Ok to proceed? (y)" question; typing "ok" there cancels it.)
 
 $ErrorActionPreference = "Stop"
 $projectRef = "kghmrjphvvgfcbllbsxe"
@@ -53,10 +54,10 @@ if ($appUrl -notmatch '^https://[A-Za-z0-9.-]+$') {
 
 Write-Host ""
 Write-Host "Saving to Supabase project $projectRef ..." -ForegroundColor Cyan
-& npx.cmd supabase secrets set "STRIPE_SECRET_KEY=$secretKey" "STRIPE_WEBHOOK_SECRET=$webhookSecret" "APP_URL=$appUrl" --project-ref $projectRef
+& npx.cmd --yes supabase secrets set "STRIPE_SECRET_KEY=$secretKey" "STRIPE_WEBHOOK_SECRET=$webhookSecret" "APP_URL=$appUrl" --project-ref $projectRef
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
-    Write-Host "Supabase refused. If it says you are not logged in, run:  npx.cmd supabase login   and try again." -ForegroundColor Red
+    Write-Host "Supabase refused. If it says you are not logged in, run:  npx.cmd --yes supabase login   and try again." -ForegroundColor Red
     exit 1
 }
 
@@ -66,6 +67,6 @@ $webhookSecret = $null
 
 Write-Host ""
 Write-Host "Saved. Supabase now holds these secrets (names and last-updated time only):" -ForegroundColor Green
-& npx.cmd supabase secrets list --project-ref $projectRef
+& npx.cmd --yes supabase secrets list --project-ref $projectRef
 Write-Host ""
 Write-Host "Done. Go back to Claude and say it is saved." -ForegroundColor Green
