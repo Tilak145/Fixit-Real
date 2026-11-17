@@ -23,6 +23,17 @@ function Read-Hidden([string]$prompt) {
     finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
 }
 
+# Fail early, before any key is pasted, if the command line is signed in to a
+# Supabase account that cannot see FixIt's project.
+$visible = (& npx.cmd --yes supabase projects list -o json 2>$null) -join "`n"
+if ($visible -notmatch [regex]::Escape($projectRef)) {
+    Write-Host ""
+    Write-Host "The Supabase command line is signed in to an account that cannot see FixIt's project." -ForegroundColor Red
+    Write-Host "Sign out with:  npx.cmd --yes supabase logout" -ForegroundColor Red
+    Write-Host "then sign in again with the SAME account you use in the Supabase dashboard for FixIt (the one that owns 'Tilak145's Project')." -ForegroundColor Red
+    exit 1
+}
+
 Write-Host ""
 Write-Host "FixIt: save the LIVE Stripe secrets to Supabase" -ForegroundColor Cyan
 Write-Host "Nothing you paste is shown or stored; it goes straight to Supabase." -ForegroundColor DarkGray
