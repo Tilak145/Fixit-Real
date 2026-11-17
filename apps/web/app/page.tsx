@@ -3,6 +3,9 @@ import { ArrowRight, BadgeCheck, Check, FileText, Lock, MapPin, Star } from "luc
 import { SiteHeader, SiteFooter } from "@/components/fixit/site-chrome";
 import { ProCard } from "@/components/fixit/pro-card";
 import { AutoRefresh } from "@/components/fixit/auto-refresh";
+import { FeaturedProCard } from "@/components/fixit/featured-pro-card";
+import { pickFeatured } from "@/lib/featured-pros";
+import type { ProSummary } from "@/lib/fixit";
 import { listCategories, listPros, listCategoryProCounts, resolveVisitorCity, isBackendConfigured } from "@/lib/fixit-server";
 import { ServiceIcon, CORE_CATEGORIES } from "@/components/fixit/service-icons";
 import { HeroSearch } from "@/components/fixit/hero-search";
@@ -15,6 +18,7 @@ async function getHomeData(cityParam?: string) {
       configured: false as const,
       categories: CORE_CATEGORIES.map((c, i) => ({ ...c, icon: c.slug, sort_order: i, pros: 0, availableNow: 0 })),
       pros: [] as const,
+      featured: [] as ProSummary[],
       cities: [] as { label: string; is_active: boolean }[],
       chosenCity: null as string | null,
     };
@@ -23,12 +27,17 @@ async function getHomeData(cityParam?: string) {
   // visitor is shopping in is the one in the URL, else the one they picked
   // before, else the first city served.
   const { cities, chosenCity } = await resolveVisitorCity(cityParam);
-  const [categories, localPros, counts] = await Promise.all([
+  const cityFilter = chosenCity ? { city: chosenCity } : {};
+  const [categories, localPros, counts, paidPros] = await Promise.all([
     listCategories(),
     // Top pros are the ones who cover the chosen city, so "near you" is true.
-    listPros(chosenCity ? { city: chosenCity } : {}),
+    listPros(cityFilter),
     listCategoryProCounts(chosenCity),
+    // The featured spots: the plans that pay the most, in the chosen city.
+    listPros({ ...cityFilter, plans: ["business", "professional"] }),
   ]);
+  const featured = pickFeatured(paidPros);
+  const featuredIds = new Set(featured.map((pro) => pro.id));
   // Always show at least the ten launch categories, in the design's order.
   const merged = CORE_CATEGORIES.map((c, i) => {
     const db = categories.find((d) => d.slug === c.slug);
@@ -42,7 +51,9 @@ async function getHomeData(cityParam?: string) {
   return {
     configured: true as const,
     categories: merged,
-    pros: localPros.slice(0, 4),
+    // A business in a featured spot is not listed a second time below.
+    pros: localPros.filter((pro) => !featuredIds.has(pro.id)).slice(0, 4),
+    featured,
     cities: offered,
     chosenCity,
   };
@@ -115,7 +126,7 @@ export default async function HomePage({
   searchParams: Promise<{ city?: string }>;
 }) {
   const { city: cityParam } = await searchParams;
-  const { configured, categories, pros, cities, chosenCity } = await getHomeData(cityParam);
+  const { configured, categories, pros, featured, cities, chosenCity } = await getHomeData(cityParam);
   // Point "see more" at a category that has professionals behind it.
   // Service links carry the city, so the list they open is that city's.
   const cityQuery = chosenCity ? `?city=${encodeURIComponent(chosenCity)}` : "";
@@ -217,6 +228,25 @@ export default async function HomePage({
         </div>
       </section>
 
+      {/* Featured professionals: the spots go to the plans that pay the most,
+          Business first and then Professional. The section is absent when no
+          paying professional covers the chosen city. */}
+      {featured.length > 0 ? (
+        <section id="featured" className="mx-auto w-full max-w-[1280px] scroll-mt-20 px-4 pb-6 sm:px-6 lg:pb-8">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 className="font-display text-xl font-semibold sm:text-[22px]">
+              Featured professionals{chosenCity ? ` in ${chosenCity}` : ""}
+            </h2>
+            <p className="text-[12.5px] text-muted-foreground">Featured spots are paid placements.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {featured.map((pro) => (
+              <FeaturedProCard key={pro.id} pro={pro} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {/* How it works */}
       <section id="how-it-works" className="scroll-mt-20 border-y border-border bg-card py-14 lg:py-20">
         <div className="mx-auto max-w-[1280px] px-4 sm:px-6">
@@ -269,7 +299,10 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* Local pros */}
+      {/* Local pros. When every professional in the city already has a featured
+          spot above, there is nothing left to list here, and the "we're adding
+          professionals" message would be wrong, so the section is left out. */}
+      {!configured || pros.length > 0 || featured.length === 0 ? (
       <section className="border-t border-border bg-card py-14 lg:py-20">
         <div className="mx-auto max-w-[1280px] px-4 sm:px-6">
           {!configured ? (
@@ -280,7 +313,7 @@ export default async function HomePage({
             <>
               <div className="mb-8 flex flex-wrap items-baseline justify-between gap-3">
                 <h2 className="font-display text-[28px] font-semibold sm:text-[32px]">
-                  Professionals {chosenCity ? `in ${chosenCity}` : "near you"}
+                  {featured.length > 0 ? "More professionals" : "Professionals"} {chosenCity ? `in ${chosenCity}` : "near you"}
                 </h2>
                 <Link href={browseHref} className="text-sm font-bold text-primary hover:underline">
                   See more professionals
@@ -331,6 +364,7 @@ export default async function HomePage({
           )}
         </div>
       </section>
+      ) : null}
 
       {/* For professionals */}
       <section className="bg-secondary py-14 lg:py-20">

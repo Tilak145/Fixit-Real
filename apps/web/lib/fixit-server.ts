@@ -91,10 +91,12 @@ export async function getCategory(slug: string): Promise<ServiceCategory | null>
 export interface ProFilter {
   categorySlug?: string;
   city?: string;
+  /** Only professionals on one of these plans. */
+  plans?: string[];
 }
 
 const PRO_FIELDS =
-  "id,business_name,description,rating,review_count,logo_url,years_in_business,status,accepts_emergency,accepting_work";
+  "id,business_name,description,rating,review_count,logo_url,years_in_business,status,accepts_emergency,accepting_work,plan";
 
 export async function listPros(filter: ProFilter = {}): Promise<ProSummary[]> {
   const supabase = await publicClient();
@@ -105,6 +107,7 @@ export async function listPros(filter: ProFilter = {}): Promise<ProSummary[]> {
     .eq("status", "approved")
     .order("rating", { ascending: false })
     .limit(24);
+  if (filter.plans?.length) query = query.in("plan", filter.plans);
   // A chosen city narrows the list first, in the query itself, so a visitor
   // shopping in Kent sees only professionals who serve Kent, however many
   // businesses the other cities have.

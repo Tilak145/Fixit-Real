@@ -69,6 +69,7 @@ export const PLANS: Plan[] = [
       "First look at new leads, before Starter",
       "Service area: up to 5 cities",
       "Offer up to 3 services",
+      "Featured spot on the home page, after Business",
     ],
   },
   {
@@ -79,6 +80,7 @@ export const PLANS: Plan[] = [
     features: [
       "Everything in Professional",
       "Top placement in customer search",
+      "First featured spot on the home page, with your logo",
       "Unlimited cities and services",
       "First look at every new lead",
     ],

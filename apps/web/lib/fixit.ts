@@ -33,6 +33,8 @@ export interface ProSummary {
   status: string;
   /** Search placement bought with the plan; lower comes first among equals. */
   placement?: number;
+  /** The plan the pro pays for (starter, professional, business, founding). */
+  plan?: string | null;
   /** FixIt staff checked both the licence and the insurance. */
   verified?: boolean;
 }
