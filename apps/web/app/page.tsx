@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, Check, FileText, Lock, MapPin, Star } from "lucide-react";
 import { SiteHeader, SiteFooter } from "@/components/fixit/site-chrome";
 import { ProCard } from "@/components/fixit/pro-card";
+import { AutoRefresh } from "@/components/fixit/auto-refresh";
 import { listCategories, listPros, listCategoryProCounts, resolveVisitorCity, isBackendConfigured } from "@/lib/fixit-server";
 import { ServiceIcon, CORE_CATEGORIES } from "@/components/fixit/service-icons";
 import { HeroSearch } from "@/components/fixit/hero-search";
@@ -122,6 +123,7 @@ export default async function HomePage({
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <AutoRefresh everyMinutes={30} />
       <SiteHeader city={chosenCity} />
 
       {/* Hero. The photo stops where the page content stops; on screens wider
