@@ -222,7 +222,9 @@ export default async function HomePage({
                     {c.availableNow} available now
                   </span>
                 ) : c.pros > 0 ? (
-                  <span className="mt-0.5 text-xs text-muted-foreground">No one available right now</span>
+                  <span className="mt-0.5 text-xs text-muted-foreground">
+                    {c.pros} local {c.pros === 1 ? "pro" : "pros"}
+                  </span>
                 ) : null}
               </span>
             </Link>
