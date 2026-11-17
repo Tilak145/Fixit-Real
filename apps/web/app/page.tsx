@@ -12,7 +12,7 @@ async function getHomeData(cityParam?: string) {
   if (!(await isBackendConfigured())) {
     return {
       configured: false as const,
-      categories: CORE_CATEGORIES.map((c, i) => ({ ...c, icon: c.slug, sort_order: i, pros: 0 })),
+      categories: CORE_CATEGORIES.map((c, i) => ({ ...c, icon: c.slug, sort_order: i, pros: 0, availableNow: 0 })),
       pros: [] as const,
       cities: [] as { label: string; is_active: boolean }[],
       chosenCity: null as string | null,
@@ -31,7 +31,11 @@ async function getHomeData(cityParam?: string) {
   // Always show at least the ten launch categories, in the design's order.
   const merged = CORE_CATEGORIES.map((c, i) => {
     const db = categories.find((d) => d.slug === c.slug);
-    return { ...(db ?? { ...c, icon: c.slug, sort_order: i }), pros: counts[c.slug] ?? 0 };
+    return {
+      ...(db ?? { ...c, icon: c.slug, sort_order: i }),
+      pros: counts[c.slug]?.total ?? 0,
+      availableNow: counts[c.slug]?.availableNow ?? 0,
+    };
   });
   const offered = cities.map((city) => ({ label: city.label, is_active: city.is_active }));
   return {
@@ -195,10 +199,15 @@ export default async function HomePage({
               <span className="flex min-w-0 flex-col">
                 <span className="font-display text-[13px] font-semibold leading-tight text-foreground sm:text-sm">{c.name}</span>
                 {/* A service with no pros yet opens its waitlist, so the card still leads somewhere. */}
-                {c.pros > 0 ? (
-                  <span className="mt-0.5 text-xs text-muted-foreground">
-                    {c.pros} local {c.pros === 1 ? "pro" : "pros"}
+                {/* Only professionals who can be reached this minute are counted,
+                    so the card never promises someone who is not working. */}
+                {c.availableNow > 0 ? (
+                  <span className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-[#1E7B3C]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#2E9E4F]" aria-hidden="true" />
+                    {c.availableNow} available now
                   </span>
+                ) : c.pros > 0 ? (
+                  <span className="mt-0.5 text-xs text-muted-foreground">No one available right now</span>
                 ) : null}
               </span>
             </Link>

@@ -8,6 +8,7 @@ import type { ProSummary, Review, ServiceCategory, ServiceCity } from "@/lib/fix
 import type { AvailabilityWindow } from "@/lib/fixit-availability";
 import { compareByAvailability, type AvailabilityFacts } from "@/lib/fixit-live-availability";
 import type { TrustEvidence } from "@/lib/trust-score";
+import { countProsByCategory, type CategoryProCount } from "@/lib/category-counts";
 
 /**
  * Public reads for Server Components. Reads use the anonymous server client
@@ -320,12 +321,12 @@ export async function listProReviews(proId: string): Promise<Review[]> {
  * The home grid uses it to keep a category with no one behind it from looking
  * bookable.
  */
-export async function listCategoryProCounts(city?: string | null): Promise<Record<string, number>> {
+export async function listCategoryProCounts(city?: string | null): Promise<Record<string, CategoryProCount>> {
   const supabase = await publicClient();
   if (!supabase) return {};
   const { data: providers, error } = await supabase
     .from("providers")
-    .select("id")
+    .select("id,accepting_work,accepts_emergency")
     .eq("status", "approved");
   if (error) throw new Error(error.message);
   let ids = (providers ?? []).map((row) => row.id as string);
@@ -341,15 +342,37 @@ export async function listCategoryProCounts(city?: string | null): Promise<Recor
     ids = ids.filter((id) => covered.has(id));
     if (ids.length === 0) return {};
   }
-  const { data: services, error: servicesError } = await supabase
-    .from("provider_services")
-    .select("category_slug")
-    .in("provider_id", ids);
+  const [{ data: services, error: servicesError }, { data: hourRows, error: hoursError }] = await Promise.all([
+    supabase.from("provider_services").select("provider_id,category_slug").in("provider_id", ids),
+    supabase
+      .from("provider_availability")
+      .select("provider_id,weekday,start_minute,end_minute")
+      .in("provider_id", ids),
+  ]);
   if (servicesError) throw new Error(servicesError.message);
-  const counts: Record<string, number> = {};
-  for (const row of services ?? []) {
-    const slug = row.category_slug as string;
-    counts[slug] = (counts[slug] ?? 0) + 1;
+  if (hoursError) throw new Error(hoursError.message);
+  // The card shows who can be reached this minute, so each professional's
+  // switch and published hours are read alongside the trades they offer.
+  const kept = new Set(ids);
+  const factsByProvider = new Map<string, AvailabilityFacts>();
+  for (const row of providers ?? []) {
+    if (!kept.has(row.id as string)) continue;
+    factsByProvider.set(row.id as string, {
+      acceptingWork: row.accepting_work !== false,
+      acceptsEmergency: Boolean(row.accepts_emergency),
+      windows: [],
+    });
   }
-  return counts;
+  for (const row of hourRows ?? []) {
+    factsByProvider.get(row.provider_id as string)?.windows.push({
+      weekday: row.weekday as number,
+      startMinute: row.start_minute as number,
+      endMinute: row.end_minute as number,
+    });
+  }
+  return countProsByCategory(
+    (services ?? []) as { provider_id: string; category_slug: string }[],
+    factsByProvider,
+    new Date(),
+  );
 }
