@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { clickedScrollbar, useBodyScrollLock } from "@/components/fixit/use-scroll-lock";
 import { ArrowRight, ChevronDown, MapPin, Search } from "lucide-react";
 import { QuoteRequestForm } from "@/components/fixit/request-quote";
 import { guessService } from "@/lib/job-keywords";
@@ -25,7 +26,40 @@ export function HeroSearch({
   const [city, setCity] = useState(chosenCity ?? cities[0]?.label ?? "");
   const [service, setService] = useState<string | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const firstField = useRef<HTMLInputElement>(null);
+
+  // While the window is open the page behind stays put, and keyboard scrolling
+  // (space, Page Down, the arrows) goes to the window instead of the page.
+  useBodyScrollLock(open);
+  useEffect(() => {
+    if (open) overlayRef.current?.focus({ preventScroll: true });
+  }, [open]);
+  // When the questions popup closes, keyboard focus falls back to the page, and
+  // the page behind is locked, so Page Down and the space bar would do nothing.
+  // While nothing is focused, those keys scroll the window instead.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      const overlay = overlayRef.current;
+      if (!overlay || document.querySelector("[data-testid=job-questions-dialog]")) return;
+      if (event.target !== document.body && event.target !== overlay) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const page = overlay.clientHeight * 0.9;
+      let top: number | null = null;
+      if (event.key === "PageDown" || (event.key === " " && !event.shiftKey)) top = overlay.scrollTop + page;
+      else if (event.key === "PageUp" || (event.key === " " && event.shiftKey)) top = overlay.scrollTop - page;
+      else if (event.key === "ArrowDown") top = overlay.scrollTop + 48;
+      else if (event.key === "ArrowUp") top = overlay.scrollTop - 48;
+      else if (event.key === "Home") top = 0;
+      else if (event.key === "End") top = overlay.scrollHeight;
+      if (top === null) return;
+      event.preventDefault();
+      overlay.scrollTo({ top });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   // The form only reads these once, when it opens. A stable function keeps it
   // from re-initialising on every keystroke behind the panel.
@@ -123,8 +157,12 @@ export function HeroSearch({
           role="dialog"
           aria-modal="true"
           aria-label="Request a free quote"
-          className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/55 p-4 sm:p-8"
+          ref={overlayRef}
+          tabIndex={-1}
+          className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto overscroll-contain bg-black/55 p-4 outline-none sm:p-8"
           onMouseDown={(event) => {
+            // Grabbing the window's own scrollbar is not a click on the background.
+            if (clickedScrollbar(event)) return;
             if (!boxRef.current?.contains(event.target as Node)) close();
           }}
         >

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { questionsFor, toggleAnswer, cleanAnswers, type JobAnswers } from "@/lib/job-questions";
+import { clickedScrollbar, useBodyScrollLock } from "@/components/fixit/use-scroll-lock";
 
 /**
  * Its own popup for the quick questions about a job, shown before the quote
@@ -26,6 +27,7 @@ export function JobQuestionsDialog({
   const [answers, setAnswers] = useState<JobAnswers>(() => cleanAnswers(categorySlug, initial));
   const boxRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  useBodyScrollLock();
 
   const last = step >= questions.length - 1;
   const question = questions[Math.min(step, questions.length - 1)];
@@ -51,8 +53,10 @@ export function JobQuestionsDialog({
       aria-modal="true"
       aria-label={`Questions about your ${serviceName.toLowerCase()} job`}
       data-testid="job-questions-dialog"
-      className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-black/60 p-4"
+      className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto overscroll-contain bg-black/60 p-4"
       onMouseDown={(event) => {
+        // Grabbing the popup's own scrollbar is not a click on the background.
+        if (clickedScrollbar(event)) return;
         if (!boxRef.current?.contains(event.target as Node)) onDone(answers);
       }}
     >
