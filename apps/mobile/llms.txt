@@ -1,0 +1,9 @@
+# ExaSpark application components
+
+- [Design rules](docs/design-rules.md)
+- [Component index](docs/README.md)
+- [Uniwind (Tailwind for React Native)](https://docs.uniwind.dev/llms.txt)
+- [shadcn AI reference](https://ui.shadcn.com/llms.txt)
+
+Read the local sources and AGENTS.md. Reuse installed components, preserve their
+accessibility and apply the project DESIGN.md. Keep provider secrets server-side.

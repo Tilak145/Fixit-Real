@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+@import 'uniwind';
+/* DESIGN.md's tokens. spk-design.cjs writes this file when Metro starts and
+   whenever DESIGN.md changes; never edit it. */
+@import './spk-design.css';
+
+@theme {
+  /* React Native loads one font file per weight (useFonts in app/_layout.tsx),
+     so each weight utility selects its own Geist family. */
+  --font-sans: 'Geist_400Regular';
+  --font-normal: 'Geist_400Regular';
+  --font-medium: 'Geist_500Medium';
+  --font-semibold: 'Geist_600SemiBold';
+  --font-bold: 'Geist_700Bold';
+}

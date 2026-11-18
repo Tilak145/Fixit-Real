@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "FixIt",
+    "slug": "fixit",
+    "version": "1.0.0",
+    "scheme": "fixit",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.fixitls.app",
+      "versionCode": 1,
+      "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "output": "single",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "FixIt opens your photos only for the picture you choose to attach to a repair request.",
+          "cameraPermission": "FixIt opens the camera so you can photograph the problem you need fixed."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

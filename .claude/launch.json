@@ -7,6 +7,13 @@
       "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "--webpack", "-p", "3000"],
       "cwd": "apps/web",
       "port": 3000
+    },
+    {
+      "name": "fixit-mobile-web",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["node_modules/expo/bin/cli", "start", "--web", "--localhost", "--port", "8081"],
+      "cwd": "apps/mobile",
+      "port": 8081
     }
   ]
 }
