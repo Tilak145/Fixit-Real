@@ -94,6 +94,58 @@ export async function saveMyHours(userId: string, input: ProviderAvailability): 
   if (insertError) throw new Error(insertError.message);
 }
 
+/** The trades and cities this business covers. */
+export async function getMyCoverage(providerId: string): Promise<{ services: string[]; cities: string[] }> {
+  const supabase = getSupabase();
+  if (!supabase) return { services: [], cities: [] };
+  const [services, areas] = await Promise.all([
+    supabase.from('provider_services').select('category_slug').eq('provider_id', providerId),
+    supabase.from('provider_service_areas').select('city').eq('provider_id', providerId),
+  ]);
+  if (services.error) throw new Error(services.error.message);
+  if (areas.error) throw new Error(areas.error.message);
+  return {
+    services: (services.data ?? []).map(row => row.category_slug as string),
+    cities: (areas.data ?? []).map(row => row.city as string),
+  };
+}
+
+/**
+ * Saves the trades and cities as a change from what is stored: removals first
+ * (so a swap never goes over the plan), then additions. The database refuses a
+ * list bigger than the plan covers, and its message is passed on.
+ */
+export async function saveMyCoverage(
+  providerId: string,
+  before: { services: string[]; cities: string[] },
+  after: { services: string[]; cities: string[] },
+): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Data services are not connected yet, so this cannot be saved.');
+  const fail = (message: string): never => { throw new Error(message); };
+  const gone = (from: string[], to: string[]) => from.filter(item => !to.includes(item));
+  const removedServices = gone(before.services, after.services);
+  const removedCities = gone(before.cities, after.cities);
+  if (removedServices.length) {
+    const { error } = await supabase.from('provider_services').delete().eq('provider_id', providerId).in('category_slug', removedServices);
+    if (error) fail(error.message);
+  }
+  if (removedCities.length) {
+    const { error } = await supabase.from('provider_service_areas').delete().eq('provider_id', providerId).in('city', removedCities);
+    if (error) fail(error.message);
+  }
+  const addedServices = gone(after.services, before.services);
+  const addedCities = gone(after.cities, before.cities);
+  if (addedServices.length) {
+    const { error } = await supabase.from('provider_services').insert(addedServices.map(slug => ({ provider_id: providerId, category_slug: slug })));
+    if (error) fail(error.message);
+  }
+  if (addedCities.length) {
+    const { error } = await supabase.from('provider_service_areas').insert(addedCities.map(city => ({ provider_id: providerId, city })));
+    if (error) fail(error.message);
+  }
+}
+
 /** One request that reached this business, as this app shows it. */
 export interface BusinessLead {
   id: string;

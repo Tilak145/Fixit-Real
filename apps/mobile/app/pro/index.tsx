@@ -2,6 +2,7 @@ import { Linking, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, CalendarClock, ChevronRight, Receipt } from 'lucide-react-native';
+import { CoverageEditor } from '@/components/fixit/coverage-editor';
 import { HoursEditor } from '@/components/fixit/hours-editor';
 import { JobDetails } from '@/components/fixit/job-details';
 import { Screen, Section } from '@/components/screen';
@@ -232,6 +233,7 @@ function BusinessDashboard() {
     <>
       <WorkSwitch userId={userId} />
       <HoursEditor userId={userId} />
+      <CoverageEditor providerId={pro.id} plan={pro.plan} />
 
       {/* Start here: what needs this business next, before any lists. */}
       <View className="bg-muted/40 border-border gap-3 rounded-2xl border p-4">
