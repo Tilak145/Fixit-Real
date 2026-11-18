@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Platform, Pressable, TextInput, View } from 'react-native';
@@ -17,6 +17,11 @@ import { AddressField } from '@/components/fixit/address-field';
 import { MediaPicker, type PendingPhoto } from '@/components/fixit/media-picker';
 import { uploadRequestMedia } from '@/lib/fixit';
 import { useAuth } from '@/features/auth';
+import { JobQuestionsModal } from '@/components/fixit/job-questions-modal';
+import { JobSummary } from '@/components/fixit/job-summary';
+import { estimateJob, formatEstimateRange } from '@/lib/fixit-estimate';
+import { cleanAnswers, composeDescription, hasAnswers, type JobAnswers } from '@/lib/job-questions';
+import { useChosenCity } from '@/lib/city';
 import { BUDGET_PRESETS, parseDollarsToCents, presetRange, validateBudgetRange } from '@/lib/budget';
 
 type Status = 'idle' | 'sending' | 'done' | 'error';
@@ -36,7 +41,16 @@ export default function RequestPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const chosenCity = useChosenCity();
   const [city, setCity] = useState('Akron, OH');
+  // Start in the city the customer is already shopping in.
+  useEffect(() => {
+    if (chosenCity.city) setCity(chosenCity.city);
+  }, [chosenCity.city]);
+  // The quick questions about the job, asked in their own window.
+  const [answers, setAnswers] = useState<JobAnswers>({});
+  const [questionsOpen, setQuestionsOpen] = useState(true);
+  const [emergency, setEmergency] = useState(false);
   // The cities the owner serves, offered in place of typing. Until the list
   // arrives or if it is empty, the field stays a plain text input.
   const cities = useQuery({ queryKey: ['service-cities'], queryFn: listCities, staleTime: 5 * 60_000 });
@@ -74,13 +88,18 @@ export default function RequestPage() {
   }, [params.service]);
 
   function chooseService(slug: string) {
+    if (slug !== category) {
+      setAnswers({});
+      setQuestionsOpen(true);
+    }
     setCategory(slug);
     AsyncStorage.setItem(SERVICE_KEY, slug).catch(() => {});
   }
 
   async function submit() {
     if (status === 'sending') return;
-    if (description.trim().length < 5) {
+    const answered = hasAnswers(category, answers);
+    if (!answered && description.trim().length < 5) {
       setStatus('error');
       setError('Describe the job in a few words so we can match the right pros.');
       return;
@@ -107,7 +126,8 @@ export default function RequestPage() {
     try {
       const requestId = await submitQuoteRequest({
         categorySlug: category,
-        description: description.trim(),
+        description: composeDescription(category, answers, description),
+        isEmergency: emergency,
         customerName: name.trim(),
         customerEmail: email.trim(),
         customerPhone: phone.trim() || null,
@@ -144,6 +164,16 @@ export default function RequestPage() {
       setError(cause instanceof Error ? cause.message : 'Your request did not send. Check your connection and retry.');
     }
   }
+
+  const estimate = useMemo(
+    () =>
+      estimateJob({
+        text: composeDescription(category, answers, description),
+        categorySlug: category,
+        urgency: emergency ? 'emergency' : undefined,
+      }),
+    [category, answers, description, emergency],
+  );
 
   if (status === 'done') {
     return (
@@ -220,8 +250,15 @@ export default function RequestPage() {
           </Select>
         </Field>
 
+        <JobSummary
+          categorySlug={category}
+          serviceName={categoryName(category)}
+          answers={cleanAnswers(category, answers)}
+          onOpen={() => setQuestionsOpen(true)}
+        />
+
         <Field>
-          <FieldLabel>Describe the job</FieldLabel>
+          <FieldLabel>{hasAnswers(category, answers) ? 'Anything else the pro should know? (optional)' : 'Describe the job'}</FieldLabel>
           <Textarea
             value={description}
             onChangeText={setDescription}
@@ -231,6 +268,34 @@ export default function RequestPage() {
           />
           <FieldDescription>What is wrong, and anything a pro should know before quoting.</FieldDescription>
         </Field>
+
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: emergency }}
+          onPress={() => setEmergency(value => !value)}
+          className={'flex-row items-start gap-3 rounded-xl border p-3.5 ' + (emergency ? 'border-[#E8A0A0] bg-[#FDECEA]' : 'border-border bg-muted/40')}>
+          <View className={'mt-0.5 size-5 items-center justify-center rounded border ' + (emergency ? 'border-[#C0392B] bg-[#C0392B]' : 'border-border bg-card')}>
+            {emergency ? <Text className="text-[12px] font-bold text-white">✓</Text> : null}
+          </View>
+          <View className="flex-1 gap-0.5">
+            <Text className="text-[14px] font-semibold">This is an emergency. I need help today</Text>
+            <Text className="text-muted-foreground text-[12px] leading-4">
+              Available pros see it first, and emergency work is priced higher.
+            </Text>
+          </View>
+        </Pressable>
+
+        {estimate ? (
+          <View className="gap-1 rounded-xl border border-[#BFD7F2] bg-[#EEF5FD] p-4">
+            <Text className="text-[11px] font-bold uppercase tracking-wide text-[#0B2545]">Estimated cost</Text>
+            <Text className="text-[22px] font-bold text-[#0B2545]">{formatEstimateRange(estimate.lowCents, estimate.highCents)}</Text>
+            <Text className="text-foreground/80 text-[13px] leading-5">{estimate.summary}</Text>
+            {estimate.emergency ? (
+              <Text className="text-[12px] font-semibold text-[#8A1F11]">Emergency / same-day work is usually priced higher than this range.</Text>
+            ) : null}
+            <Text className="text-muted-foreground pt-1 text-[11.5px] leading-4">{estimate.note}</Text>
+          </View>
+        ) : null}
 
         {/* Photos sit with the description, because that is where the customer
             is looking at the problem they are about to photograph. */}
@@ -393,6 +458,16 @@ export default function RequestPage() {
           <FieldDescription>Where the job is, so we match pros who serve that area.</FieldDescription>
         </Field>
       </FieldGroup>
+      <JobQuestionsModal
+        visible={questionsOpen}
+        categorySlug={category}
+        serviceName={categoryName(category)}
+        initial={answers}
+        onDone={next => {
+          setAnswers(cleanAnswers(category, next));
+          setQuestionsOpen(false);
+        }}
+      />
     </Screen>
   );
 }

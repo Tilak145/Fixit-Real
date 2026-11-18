@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, ChevronRight, ClipboardList, Search, ShieldCheck, ThumbsUp, Users, Zap } from 'lucide-react-native';
 import { Screen, Section } from '@/components/screen';
 import { FixItLogo } from '@/components/fixit/logo';
-import { ProCard } from '@/components/fixit/pro-card';
+import { FeaturedProCard, ProCard } from '@/components/fixit/pro-card';
 import { ServiceTile } from '@/components/fixit/service-tile';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,7 +13,10 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import { Icon } from '@/components/ui/icon';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { CORE_CATEGORIES, listCategoryProCounts, listCities, listPros } from '@/lib/fixit';
+import { CityPicker } from '@/components/fixit/city-picker';
+import { CORE_CATEGORIES, listCategoryProCounts, listPros } from '@/lib/fixit';
+import { featuredSeed, pickFeatured } from '@/lib/featured-pros';
+import { useChosenCity } from '@/lib/city';
 
 const trustPoints = [
   { icon: ShieldCheck, label: 'Verified pros' },
@@ -27,27 +30,41 @@ const steps = [
   { title: 'Choose and get it done', text: 'Compare quotes, then hire the best pro.' },
 ];
 
-/** The customer's starting point: search, services, how it works and top pros. */
+/** The customer's starting point: search, services, featured businesses, how it works and top pros. */
 export default function HomePage({ edges }: { edges?: Edge[] }) {
   const { width } = useWindowDimensions();
+  const { city, options, choose } = useChosenCity();
+  const ready = city !== null;
+  // Featured businesses are paid placements, taken from the two top plans.
+  const featured = useQuery({
+    queryKey: ['pros', 'featured', city],
+    enabled: ready,
+    refetchInterval: 120_000,
+    queryFn: async () => {
+      const found = await listPros({ city: city ?? undefined, plans: ['business', 'professional'], paidOnly: true, limit: 60 });
+      return pickFeatured(found, { seed: featuredSeed(new Date(), city) });
+    },
+  });
   const pros = useQuery({
-    queryKey: ['pros', 'home'],
-    queryFn: () => listPros(),
+    queryKey: ['pros', 'home', city],
+    enabled: ready,
+    refetchInterval: 120_000,
+    queryFn: () => listPros({ city: city ?? undefined, limit: 3 }),
   });
   const counts = useQuery({
-    queryKey: ['category-counts'],
-    queryFn: () => listCategoryProCounts(),
+    queryKey: ['category-counts', city],
+    enabled: ready,
+    refetchInterval: 120_000,
+    queryFn: () => listCategoryProCounts(city),
   });
-  // The served area comes from the owner's city list, so the chip follows it
-  // rather than naming one hard-coded place.
-  const cities = useQuery({ queryKey: ['service-cities'], queryFn: listCities, staleTime: 5 * 60_000 });
-  const servedCity = (cities.data ?? []).find(city => city.is_active)?.label ?? null;
-  // Two columns with the screen's 20px gutters and a 12px gap.
-  const tileWidth = Math.max(140, (width - 40 - 24) / 3);
-  // Before the counts arrive, treat every service as bookable so the grid is
-  // never greyed out on a slow connection.
-  const availableFor = (slug: string) => (counts.data ? (counts.data[slug] ?? 0) > 0 : true);
-  const browse = CORE_CATEGORIES.find(category => availableFor(category.slug)) ?? CORE_CATEGORIES[0];
+  // Three columns with the screen's 20px gutters and a 12px gap.
+  const tileWidth = Math.max(100, (width - 40 - 24) / 3);
+  const detailFor = (slug: string) => {
+    const total = counts.data?.[slug]?.total ?? 0;
+    if (!counts.data || total === 0) return null;
+    return total + ' local ' + (total === 1 ? 'pro' : 'pros');
+  };
+  const browse = CORE_CATEGORIES.find(category => (counts.data?.[category.slug]?.total ?? 0) > 0) ?? CORE_CATEGORIES[0];
 
   return (
     <Screen
@@ -55,15 +72,11 @@ export default function HomePage({ edges }: { edges?: Edge[] }) {
       header={
         <View className="flex-row items-center justify-between px-5 pb-3 pt-2">
           <FixItLogo />
-          {servedCity ? (
-            <View className="bg-muted h-9 flex-row items-center gap-1.5 rounded-full px-3">
-              <Text className="text-muted-foreground text-[12.5px] font-semibold">{servedCity}</Text>
-            </View>
-          ) : null}
+          <CityPicker city={city} options={options} onChange={choose} />
         </View>
       }>
       {/* Hero */}
-      <View className="bg-secondary gap-4 rounded-3xl p-5">
+      <View className="gap-4 rounded-3xl bg-[#0B2545] p-5">
         <View className="gap-1.5">
           <Text role="heading" className="text-[26px] font-bold leading-8 text-white">
             Get your home fixed today
@@ -99,12 +112,24 @@ export default function HomePage({ edges }: { edges?: Edge[] }) {
               slug={category.slug}
               name={category.name}
               width={tileWidth}
-              available={availableFor(category.slug)}
+              detail={detailFor(category.slug)}
+              city={city}
             />
           ))}
         </View>
       </Section>
 
+      {/* Featured businesses */}
+      {featured.data && featured.data.length > 0 ? (
+        <Section title="Featured professionals">
+          <View className="gap-4">
+            {featured.data.map(pro => (
+              <FeaturedProCard key={pro.id} pro={pro} />
+            ))}
+            <Text className="text-muted-foreground text-center text-[11.5px]">Featured spots are paid placements.</Text>
+          </View>
+        </Section>
+      ) : null}
       {/* How it works */}
       <Section title="How FixIt works">
         <Card className="gap-4 py-5">
@@ -126,13 +151,13 @@ export default function HomePage({ edges }: { edges?: Edge[] }) {
 
       {/* Top pros */}
       <Section
-        title="Top rated near you"
+        title={city ? "Professionals in " + city : "Professionals near you"}
         action={
           <Button
             variant="ghost"
             size="sm"
             className="h-auto px-0"
-            onPress={() => router.push({ pathname: '/service/[slug]', params: { slug: browse.slug } })}>
+            onPress={() => router.push({ pathname: '/service/[slug]', params: city ? { slug: browse.slug, city } : { slug: browse.slug } })}>
             <Text className="text-muted-foreground text-sm">See more</Text>
             <Icon as={ChevronRight} className="text-muted-foreground size-4" />
           </Button>
@@ -183,6 +208,9 @@ export default function HomePage({ edges }: { edges?: Edge[] }) {
             <Icon as={Users} className="size-4" />
             <Text>My requests</Text>
             <Icon as={ArrowRight} className="size-4" />
+          </Button>
+          <Button variant="ghost" onPress={() => router.push('/help')}>
+            <Text className="text-muted-foreground">Common questions</Text>
           </Button>
         </CardContent>
       </Card>

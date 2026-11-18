@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Pressable, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardList, Film, MessageSquare, Search } from 'lucide-react-native';
@@ -15,7 +15,7 @@ import { Icon } from '@/components/ui/icon';
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { categoryName, formatCents, listMyRequests, respondToQuote, type JobQuote, type MyRequest } from '@/lib/fixit';
+import { DECLINE_REASONS, DECLINE_REASON_MAX, DECLINE_REASON_MIN, categoryName, formatCents, listMyRequests, respondToQuote, type JobQuote, type MyRequest } from '@/lib/fixit';
 import { quoteGaps, quoteLines } from '@/lib/quote-comparison';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -44,9 +44,14 @@ const QUOTE_STATUS: Record<JobQuote['status'], string> = {
  */
 function Quotes({ request }: { request: MyRequest }) {
   const queryClient = useQueryClient();
+  // The quote being declined, and why: a decline must say why.
+  const [declining, setDeclining] = useState<string | null>(null);
+  const [reason, setReason] = useState('');
   const respond = useMutation({
-    mutationFn: (input: { quoteId: string; response: 'accepted' | 'declined' }) => respondToQuote(input),
+    mutationFn: (input: { quoteId: string; response: 'accepted' | 'declined'; reason?: string }) => respondToQuote(input),
     onSuccess: async () => {
+      setDeclining(null);
+      setReason('');
       await queryClient.invalidateQueries({ queryKey: ['my-requests'] });
     },
   });
@@ -130,8 +135,40 @@ function Quotes({ request }: { request: MyRequest }) {
                 size="sm"
                 variant="outline"
                 disabled={respond.isPending}
-                onPress={() => respond.mutate({ quoteId: quote.id, response: 'declined' })}>
+                onPress={() => { setDeclining(declining === quote.id ? null : quote.id); setReason(''); }}>
                 <Text>Decline</Text>
+              </Button>
+            </View>
+          ) : null}
+          {quote.status === 'sent' && declining === quote.id ? (
+            <View className="border-border gap-2 rounded-md border bg-white p-3">
+              <Text className="text-[13px] font-semibold">Why are you declining? The pro will see this.</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {DECLINE_REASONS.map(option => (
+                  <Pressable
+                    key={option}
+                    accessibilityRole="button"
+                    onPress={() => setReason(option)}
+                    className={'rounded-full border px-3 py-1.5 ' + (reason === option ? 'border-primary bg-primary' : 'border-border bg-card')}>
+                    <Text className={'text-[12.5px] font-semibold ' + (reason === option ? 'text-primary-foreground' : 'text-foreground')}>{option}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                value={reason}
+                onChangeText={setReason}
+                maxLength={DECLINE_REASON_MAX}
+                placeholder="Or write your own reason"
+                accessibilityLabel="Reason for declining"
+                className="border-input text-foreground h-11 w-full rounded-full border px-4 text-base"
+                placeholderTextColorClassName="accent-muted-foreground"
+              />
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={respond.isPending || reason.trim().length < DECLINE_REASON_MIN}
+                onPress={() => respond.mutate({ quoteId: quote.id, response: 'declined', reason })}>
+                <Text>{respond.isPending ? 'Saving…' : 'Send decline'}</Text>
               </Button>
             </View>
           ) : null}

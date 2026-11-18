@@ -16,4 +16,6 @@ export const config = {
   statusUrl: process.env.EXPO_PUBLIC_APP_STATUS_URL ?? '',
   versionCode: Number(process.env.EXPO_PUBLIC_APP_VERSION_CODE ?? 0),
   preview: process.env.EXPO_PUBLIC_PREVIEW === 'true',
+  /** Shows the "testing phase" notice on every screen. Set EXPO_PUBLIC_IN_TESTING=false at launch. */
+  testing: process.env.EXPO_PUBLIC_IN_TESTING !== 'false',
 };

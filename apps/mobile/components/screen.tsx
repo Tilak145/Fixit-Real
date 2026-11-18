@@ -7,6 +7,7 @@ import { withUniwind } from 'uniwind';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { TestingBanner } from '@/components/fixit/testing-banner';
 import { cn } from '@/lib/utils';
 
 // className on a third-party component goes through withUniwind.
@@ -41,6 +42,7 @@ export function Screen({ title, description, back = false, action, header, foote
   const content = cn('gap-6 px-5 pb-8 pt-2', className);
   return (
     <SafeAreaView edges={edges ?? ['top', 'bottom']} className="bg-background flex-1">
+      <TestingBanner />
       {header ?? (title || back || action ? <ScreenHeader title={title} description={description} back={back} action={action} /> : null)}
       {scroll ? (
         <ScrollView className="flex-1" contentContainerClassName={content} keyboardShouldPersistTaps="handled">{children}</ScrollView>

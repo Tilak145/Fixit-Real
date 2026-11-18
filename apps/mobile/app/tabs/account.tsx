@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Briefcase, CalendarDays, ClipboardList, ChevronRight, Search } from 'lucide-react-native';
+import { Briefcase, CalendarDays, ClipboardList, ChevronRight, CircleHelp, Search } from 'lucide-react-native';
 import type { User } from '@supabase/supabase-js';
 import { Screen, Section } from '@/components/screen';
 import { AccountActions, AccountGate, useAuth } from '@/features/auth';
@@ -99,6 +99,11 @@ function Account() {
           </Button>
         </View>
       </Section>
+
+      <Button variant="outline" className="justify-start" onPress={() => router.push('/help')}>
+        <Icon as={CircleHelp} className="size-4" />
+        <Text className="flex-1 text-left">Common questions</Text>
+      </Button>
 
       <Card className="gap-2 py-5">
         <CardContent className="gap-2 px-5">

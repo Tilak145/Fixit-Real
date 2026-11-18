@@ -1,6 +1,15 @@
 // FixIt marketplace data, read from the same project backend the website uses.
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase } from '@/lib/supabase';
 import type { TrustEvidence } from '@/lib/trust-score';
+import type { AvailabilityWindow } from './fixit-availability.ts';
+import {
+  matchesAvailabilityFilter,
+  type AvailabilityFacts,
+  type AvailabilityFilter,
+} from './fixit-live-availability.ts';
+import { PAGE_SIZE, countByFilter, placementForPlan, rankPros, takePages } from './pro-ranking.ts';
+import { countProsByCategory, type CategoryProCount } from './category-counts.ts';
 
 export interface ServiceCategory {
   slug: string;
@@ -47,6 +56,18 @@ export interface ProSummary {
   logo_url: string | null;
   years_in_business: string | null;
   employees: string | null;
+  /** The plan the pro pays for (starter, professional, business, founding). */
+  plan?: string | null;
+  /** The pro's published working hours, when they have set any. */
+  hours?: AvailabilityWindow[];
+  /** Whether the pro is taking new work at all right now. */
+  acceptingWork?: boolean;
+  /** Whether the pro takes emergency and after-hours calls. */
+  acceptsEmergency?: boolean;
+  /** Search placement bought with the plan; lower comes first among equals. */
+  placement?: number;
+  /** FixIt staff checked both the licence and the insurance. */
+  verified?: boolean;
 }
 
 export interface Review {
@@ -85,12 +106,14 @@ export interface JobQuote {
   status: QuoteStatus;
   created_at: string;
   responded_at: string | null;
+  /** Why the customer declined, written by them and shown to the professional. */
+  decline_reason?: string | null;
   provider_name?: string | null;
 }
 
 /** Every column a quote read needs, shared by this app's quote reads. */
 export const QUOTE_FIELDS =
-  'id,quote_request_id,provider_id,amount_cents,labour_cents,materials_cents,service_call_cents,emergency_fee_cents,other_cents,other_label,earliest_start,completion_note,warranty,payment_terms,valid_until,note,status,created_at,responded_at';
+  'id,quote_request_id,provider_id,amount_cents,labour_cents,materials_cents,service_call_cents,emergency_fee_cents,other_cents,other_label,earliest_start,completion_note,warranty,payment_terms,valid_until,note,status,created_at,responded_at,decline_reason';
 
 export interface MyRequest {
   id: string;
@@ -161,28 +184,46 @@ export async function listCategories(): Promise<ServiceCategory[]> {
   return CORE_CATEGORIES.map(category => data?.find(row => row.slug === category.slug) ?? category);
 }
 
+/** The most professionals one list reads; the database also stops at its own row cap. */
+const MATCH_LIMIT = 1000;
+
 /**
- * How many approved professionals offer each service. A service with nobody
- * behind it yet is shown as coming soon rather than bookable.
+ * How many professionals stand behind each service in a city: everyone listed
+ * (`total`), and the ones who can be reached this minute (`availableNow`). One
+ * query with the city matched inside it, so no list of ids is sent however many
+ * professionals there are.
  */
-export async function listCategoryProCounts(): Promise<Record<string, number>> {
+export async function listCategoryProCounts(city?: string | null): Promise<Record<string, CategoryProCount>> {
   const supabase = getSupabase();
   if (!supabase) return {};
-  const { data: providers, error } = await supabase.from('providers').select('id').eq('status', 'approved');
+  const select = [
+    'id,accepting_work,accepts_emergency',
+    'provider_services(category_slug)',
+    'provider_availability(weekday,start_minute,end_minute)',
+  ];
+  if (city) select.push('provider_service_areas!inner(city)');
+  let query = supabase.from('providers').select(select.join(',')).eq('status', 'approved').limit(MATCH_LIMIT);
+  if (city) query = query.eq('provider_service_areas.city', city);
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
-  const ids = (providers ?? []).map(row => row.id as string);
-  if (ids.length === 0) return {};
-  const { data: services, error: servicesError } = await supabase
-    .from('provider_services')
-    .select('category_slug')
-    .in('provider_id', ids);
-  if (servicesError) throw new Error(servicesError.message);
-  const counts: Record<string, number> = {};
-  for (const row of services ?? []) {
-    const slug = row.category_slug as string;
-    counts[slug] = (counts[slug] ?? 0) + 1;
+  const factsByProvider = new Map<string, AvailabilityFacts>();
+  const services: { provider_id: string; category_slug: string }[] = [];
+  for (const row of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+    const id = row.id as string;
+    factsByProvider.set(id, {
+      acceptingWork: row.accepting_work !== false,
+      acceptsEmergency: Boolean(row.accepts_emergency),
+      windows: ((row.provider_availability ?? []) as Array<Record<string, number>>).map(hour => ({
+        weekday: hour.weekday,
+        startMinute: hour.start_minute,
+        endMinute: hour.end_minute,
+      })),
+    });
+    for (const service of (row.provider_services ?? []) as Array<{ category_slug: string }>) {
+      services.push({ provider_id: id, category_slug: service.category_slug });
+    }
   }
-  return counts;
+  return countProsByCategory(services, factsByProvider, new Date());
 }
 
 type ProRow = {
@@ -198,10 +239,13 @@ type ProRow = {
   logo_url: string | null;
   years_in_business: string | null;
   employees: string | null;
+  plan?: string | null;
+  accepting_work?: boolean | null;
+  accepts_emergency?: boolean | null;
 };
 
 const PRO_FIELDS =
-  'id,business_name,description,email,phone,website,address,rating,review_count,logo_url,years_in_business,employees';
+  'id,business_name,description,email,phone,website,address,rating,review_count,logo_url,years_in_business,employees,plan,accepting_work,accepts_emergency';
 
 async function withAreas(pros: ProRow[]): Promise<ProSummary[]> {
   const fallback = 'Akron, OH';
@@ -218,31 +262,146 @@ async function withAreas(pros: ProRow[]): Promise<ProSummary[]> {
   });
 }
 
-export async function listPros(filter: { categorySlug?: string; city?: string } = {}): Promise<ProSummary[]> {
-  const supabase = getSupabase();
-  if (!supabase) return [];
-  let query = supabase
-    .from('providers')
-    .select(PRO_FIELDS)
-    .eq('status', 'approved')
-    .order('rating', { ascending: false })
-    .limit(24);
-  if (filter.categorySlug) {
-    const { data: links, error } = await supabase
-      .from('provider_services')
-      .select('provider_id')
-      .eq('category_slug', filter.categorySlug);
-    if (error) throw new Error(error.message);
-    const ids = (links ?? []).map(link => link.provider_id as string);
-    if (ids.length === 0) return [];
-    query = query.in('id', ids);
+export interface ProFilter {
+  categorySlug?: string;
+  /** The exact city label, as the owner's city list spells it ("Akron, OH"). */
+  city?: string;
+  /** Only professionals on one of these plans. */
+  plans?: string[];
+  /** Only professionals with a live paid subscription. */
+  paidOnly?: boolean;
+  /** How many to return from the ranked list; 24 when not given. */
+  limit?: number;
+}
+
+type Match = Omit<ProSummary, 'city' | 'areas'> & { facts: AvailabilityFacts; placement: number; rating: number };
+
+/**
+ * Every approved professional who fits the filter, with the little needed to
+ * rank them. The city and trade are matched inside the query (an inner join), so
+ * no long list of ids is sent however many professionals there are.
+ */
+async function loadMatches(supabase: SupabaseClient, filter: ProFilter): Promise<Match[]> {
+  const select = [PRO_FIELDS, 'provider_availability(weekday,start_minute,end_minute)'];
+  if (filter.city) select.push('provider_service_areas!inner(city)');
+  if (filter.categorySlug) select.push('provider_services!inner(category_slug)');
+  let query = supabase.from('providers').select(select.join(',')).eq('status', 'approved').limit(MATCH_LIMIT);
+  if (filter.city) query = query.eq('provider_service_areas.city', filter.city);
+  if (filter.categorySlug) query = query.eq('provider_services.category_slug', filter.categorySlug);
+  if (filter.plans?.length) query = query.in('plan', filter.plans);
+  // A plan is only chosen at sign-up; a paid one is proved by a live subscription.
+  let payingIds: Set<string> | null = null;
+  if (filter.paidOnly) {
+    const { data: paying, error: payingError } = await supabase.rpc('paying_provider_ids');
+    if (payingError) throw new Error(payingError.message);
+    payingIds = new Set((paying ?? []) as string[]);
+    if (payingIds.size === 0) return [];
   }
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  const pros = await withAreas((data ?? []) as ProRow[]);
-  const city = filter.city?.trim().toLowerCase();
-  if (!city) return pros;
-  return pros.filter(pro => pro.areas.some(area => area.toLowerCase().includes(city)));
+  const rows = ((data ?? []) as unknown as Array<Record<string, unknown>>).filter(
+    row => !payingIds || payingIds.has(row.id as string),
+  );
+  return rows.map(row => {
+    const { provider_availability: hourRows, provider_service_areas: _areas, provider_services: _services, ...rest } = row;
+    void _areas;
+    void _services;
+    const hours: AvailabilityWindow[] = ((hourRows ?? []) as Array<Record<string, number>>).map(hour => ({
+      weekday: hour.weekday,
+      startMinute: hour.start_minute,
+      endMinute: hour.end_minute,
+    }));
+    const pro = rest as unknown as ProRow;
+    // A missing switch means "not loaded": it must not hide a working pro.
+    const facts: AvailabilityFacts = {
+      acceptingWork: pro.accepting_work === null || pro.accepting_work === undefined ? true : Boolean(pro.accepting_work),
+      acceptsEmergency: Boolean(pro.accepts_emergency),
+      windows: hours,
+    };
+    return {
+      ...pro,
+      hours,
+      acceptingWork: facts.acceptingWork,
+      acceptsEmergency: facts.acceptsEmergency,
+      facts,
+      placement: placementForPlan(pro.plan),
+      rating: Number(pro.rating ?? 0),
+    };
+  });
+}
+
+/** The professionals a page will show, with the extras a card needs (city, check mark). */
+async function finishPros(supabase: SupabaseClient, matches: Match[], city: string | undefined): Promise<ProSummary[]> {
+  if (matches.length === 0) return [];
+  const ids = matches.map(match => match.id);
+  const [areas, verified] = await Promise.all([
+    city
+      ? Promise.resolve({ data: [] as Array<{ provider_id: string; city: string }> })
+      : supabase.from('provider_service_areas').select('provider_id,city').in('provider_id', ids),
+    // The check mark: set only when staff confirmed both licence and insurance.
+    supabase.from('provider_trust_evidence').select('provider_id,license_checked,insurance_checked').in('provider_id', ids),
+  ]);
+  const areaRows = (areas.data ?? []) as Array<{ provider_id: string; city: string }>;
+  const verifiedIds = new Set(
+    (verified.data ?? [])
+      .filter(row => row.license_checked && row.insurance_checked)
+      .map(row => row.provider_id as string),
+  );
+  return matches.map(({ facts, ...match }) => {
+    void facts;
+    const own = areaRows.filter(area => area.provider_id === match.id).map(area => area.city);
+    return {
+      ...match,
+      verified: verifiedIds.has(match.id),
+      // Everyone in a city's list serves that city, so the card names it.
+      city: city ?? own[0] ?? 'Akron, OH',
+      areas: city ? [city] : own,
+    };
+  });
+}
+
+export interface ProPage {
+  pros: ProSummary[];
+  /** Everyone who serves the city and trade, before any availability filter. */
+  matched: number;
+  /** How many fit the chosen availability filter, over the whole list. */
+  total: number;
+  /** How many fit each availability filter, over the whole list. */
+  counts: Record<AvailabilityFilter, number>;
+  hasMore: boolean;
+}
+
+/**
+ * A page of professionals for a city and trade. Every match is ranked first (who
+ * can help soonest, then paid placement, then rating) and the page is taken from
+ * that ranked list, so a paying professional with no reviews is never dropped
+ * just because better-rated ones exist. `page` 2 means the first two pages, so
+ * "Show more" adds to what is already on screen.
+ */
+export async function searchPros(
+  filter: ProFilter = {},
+  options: { page?: number; pageSize?: number; when?: AvailabilityFilter | 'all' } = {},
+): Promise<ProPage> {
+  const empty: ProPage = { pros: [], matched: 0, total: 0, counts: { any: 0, today: 0, tomorrow: 0, emergency: 0 }, hasMore: false };
+  const supabase = getSupabase();
+  if (!supabase) return empty;
+  const now = new Date();
+  const all = await loadMatches(supabase, filter);
+  if (all.length === 0) return empty;
+  const when = options.when ?? 'all';
+  const fitting = when === 'all' ? all : all.filter(match => matchesAvailabilityFilter(match.facts, when, now));
+  const { items, hasMore } = takePages(rankPros(fitting, now), options.page ?? 1, options.pageSize ?? PAGE_SIZE);
+  return {
+    pros: await finishPros(supabase, items, filter.city),
+    matched: all.length,
+    total: fitting.length,
+    counts: countByFilter(all, now),
+    hasMore,
+  };
+}
+
+export async function listPros(filter: ProFilter = {}): Promise<ProSummary[]> {
+  return (await searchPros(filter, { page: 1, pageSize: filter.limit ?? 24, when: 'all' })).pros;
 }
 
 export async function getPro(id: string): Promise<ProSummary | null> {
@@ -523,16 +682,41 @@ export async function listMyRequests(userId: string): Promise<MyRequest[]> {
   }));
 }
 
-/** The customer accepts or declines the price a professional sent. */
+/** A decline must say why; the database refuses one that does not. */
+export const DECLINE_REASON_MIN = 3;
+export const DECLINE_REASON_MAX = 500;
+
+/** Common reasons, offered as a start so declining stays one tap and a word. */
+export const DECLINE_REASONS = [
+  'The price is too high',
+  'I need it done sooner',
+  'I chose another professional',
+  'I no longer need the work',
+];
+
+/**
+ * The customer accepts or declines the price a professional sent. A decline
+ * carries the reason the customer gives, which the professional reads beside
+ * their quote.
+ */
 export async function respondToQuote(input: {
   quoteId: string;
   response: 'accepted' | 'declined';
+  reason?: string;
 }): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) throw new Error('Quoting is not connected yet.');
+  const reason = input.reason?.trim() ?? '';
+  if (input.response === 'declined' && reason.length < DECLINE_REASON_MIN) {
+    throw new Error('Please say why you are declining, so the professional knows.');
+  }
   const { error } = await supabase
     .from('quotes')
-    .update({ status: input.response })
+    .update(
+      input.response === 'declined'
+        ? { status: 'declined', decline_reason: reason.slice(0, DECLINE_REASON_MAX) }
+        : { status: 'accepted' },
+    )
     .eq('id', input.quoteId)
     .eq('status', 'sent');
   if (error) throw new Error(error.message);
