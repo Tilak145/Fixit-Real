@@ -25,6 +25,23 @@ export async function getMyBusiness(userId: string): Promise<MyBusiness | null> 
   return (data as MyBusiness | null) ?? null;
 }
 
+/** Whether this business is taking new work right now. Missing means on. */
+export async function getAcceptingWork(userId: string): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return true;
+  const { data, error } = await supabase.from('providers').select('accepting_work').eq('auth_user_id', userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.accepting_work == null ? true : Boolean(data.accepting_work);
+}
+
+/** The pause switch: off takes the business out of featured spots and ranked lists. */
+export async function setAcceptingWork(userId: string, accepting: boolean): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Data services are not connected yet, so this cannot be saved.');
+  const { error } = await supabase.from('providers').update({ accepting_work: accepting }).eq('auth_user_id', userId);
+  if (error) throw new Error(error.message);
+}
+
 /** One request that reached this business, as this app shows it. */
 export interface BusinessLead {
   id: string;

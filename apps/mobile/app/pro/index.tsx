@@ -1,7 +1,8 @@
 import { Linking, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, CalendarClock, ChevronRight, Receipt } from 'lucide-react-native';
+import { JobDetails } from '@/components/fixit/job-details';
 import { Screen, Section } from '@/components/screen';
 import { AccountGate, useAuth } from '@/features/auth';
 import { VisitsList } from '@/components/fixit/visits-list';
@@ -14,7 +15,9 @@ import { Text } from '@/components/ui/text';
 import { categoryName, formatCents } from '@/lib/fixit';
 import { config } from '@/lib/config';
 import {
+  getAcceptingWork,
   getMyBusiness,
+  setAcceptingWork,
   listBusinessAppointments,
   listBusinessLeads,
   type BusinessLead,
@@ -105,7 +108,7 @@ function LeadCard({ lead }: { lead: BusinessLead }) {
                 </Badge>
               ) : null}
             </View>
-            <Text numberOfLines={2} className="text-[13px] leading-5">{lead.description}</Text>
+            <JobDetails description={lead.description} compact lines={2} />
             <Text className="text-muted-foreground text-[12.5px]">
               {lead.city} · {when(lead.created_at)}
             </Text>
@@ -140,6 +143,32 @@ function QuoteRow({ lead }: { lead: BusinessLead }) {
         </CardContent>
       </Card>
     </Pressable>
+  );
+}
+
+/** One switch for "I am busy": pauses new work without touching hours or plan. */
+function WorkSwitch({ userId }: { userId: string }) {
+  const queryClient = useQueryClient();
+  const accepting = useQuery({ queryKey: ['accepting-work', userId], queryFn: () => getAcceptingWork(userId) });
+  const toggle = useMutation({
+    mutationFn: (next: boolean) => setAcceptingWork(userId, next),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['accepting-work', userId] }),
+  });
+  if (accepting.isPending) return null;
+  const on = accepting.data !== false;
+  return (
+    <View className={cn('gap-2 rounded-2xl border p-4', on ? 'border-border bg-card' : 'border-[#E8C48A] bg-[#FFF4E5]')}>
+      <Text className="text-[15px] font-semibold">{on ? 'You are taking new work' : 'New work is paused'}</Text>
+      <Text className="text-muted-foreground text-[12.5px] leading-5">
+        {on
+          ? 'Customers can see you as available during your hours. Pause when you are too busy.'
+          : 'You are not shown as available and not featured. Turn it back on when you are ready.'}
+      </Text>
+      <Button variant={on ? 'outline' : 'default'} disabled={toggle.isPending} onPress={() => toggle.mutate(!on)}>
+        <Text>{toggle.isPending ? 'Saving…' : on ? 'Pause new work' : 'Start taking work again'}</Text>
+      </Button>
+      {toggle.isError ? <Text className="text-destructive text-[12.5px]">{(toggle.error as Error).message}</Text> : null}
+    </View>
   );
 }
 
@@ -200,6 +229,8 @@ function BusinessDashboard() {
 
   return (
     <>
+      <WorkSwitch userId={userId} />
+
       {/* Start here: what needs this business next, before any lists. */}
       <View className="bg-muted/40 border-border gap-3 rounded-2xl border p-4">
         <View className="flex-row items-baseline justify-between gap-2">

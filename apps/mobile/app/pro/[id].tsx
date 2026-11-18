@@ -3,6 +3,7 @@ import { Image, Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CircleCheck, Film, Info, Phone, User } from 'lucide-react-native';
+import { JobDetails } from '@/components/fixit/job-details';
 import { Screen } from '@/components/screen';
 import { AccountGate, useAuth } from '@/features/auth';
 import { Badge } from '@/components/ui/badge';
@@ -302,7 +303,7 @@ function LeadDetail() {
               <Badge variant="secondary"><Text className="text-[11px]">Price sent</Text></Badge>
             ) : null}
           </View>
-          <Text className="text-[14px] leading-5">{lead.description}</Text>
+          <JobDetails description={lead.description} />
           <Text className="text-muted-foreground text-[12.5px]">
             {lead.customer_name} · {lead.city} · posted {when(lead.created_at)}
           </Text>
@@ -356,6 +357,12 @@ function LeadDetail() {
             <Text className="text-muted-foreground text-sm leading-5">
               The homeowner chose another professional for this job, so your price was closed and a new one cannot be sent.
             </Text>
+            {lead.quote?.decline_reason ? (
+              <Text className="pt-2 text-[13px] leading-5">
+                <Text className="text-[13px] font-semibold">Their reason: </Text>
+                {lead.quote.decline_reason}
+              </Text>
+            ) : null}
           </CardContent>
         </Card>
       ) : closed && !accepted ? (

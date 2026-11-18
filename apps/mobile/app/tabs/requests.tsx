@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardList, Film, MessageSquare, Search } from 'lucide-react-native';
 import { Screen, Section } from '@/components/screen';
 import { AccountGate, useAuth } from '@/features/auth';
+import { JobDetails } from '@/components/fixit/job-details';
 import { MessageThread } from '@/components/fixit/message-thread';
 import { VisitsList } from '@/components/fixit/visits-list';
 import { Badge } from '@/components/ui/badge';
@@ -193,7 +194,7 @@ function RequestCard({ request }: { request: MyRequest }) {
         <ItemMedia variant="icon"><Icon as={ClipboardList} className="text-primary size-5" /></ItemMedia>
         <ItemContent className="gap-1.5">
           <ItemTitle>{categoryName(request.category_slug)}</ItemTitle>
-          <ItemDescription numberOfLines={2}>{request.description}</ItemDescription>
+          <JobDetails description={request.description} compact lines={2} />
           <View className="flex-row flex-wrap items-center gap-2 pt-1">
             <Badge variant={request.status === 'new' ? 'secondary' : 'default'}>
               <Text className="text-[11px]">{STATUS_LABEL[request.status] ?? request.status}</Text>
