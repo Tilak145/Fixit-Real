@@ -1,4 +1,5 @@
 import { getSupabase } from '@/lib/supabase';
+import type { ProviderAvailability } from '@/lib/fixit-availability';
 import { QUOTE_FIELDS, getRequestMedia, type Appointment, type JobQuote, type RequestMedia } from '@/lib/fixit';
 
 /** The business a signed-in professional owns, as the app needs it. */
@@ -40,6 +41,57 @@ export async function setAcceptingWork(userId: string, accepting: boolean): Prom
   if (!supabase) throw new Error('Data services are not connected yet, so this cannot be saved.');
   const { error } = await supabase.from('providers').update({ accepting_work: accepting }).eq('auth_user_id', userId);
   if (error) throw new Error(error.message);
+}
+
+/** This business's weekly hours and emergency opt-in. */
+export async function getMyHours(userId: string): Promise<ProviderAvailability & { providerId: string | null }> {
+  const empty = { providerId: null, acceptsEmergency: false, acceptingWork: true, windows: [] };
+  const supabase = getSupabase();
+  if (!supabase) return empty;
+  const { data: provider, error } = await supabase
+    .from('providers')
+    .select('id,accepts_emergency,accepting_work')
+    .eq('auth_user_id', userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!provider) return empty;
+  const { data, error: hoursError } = await supabase
+    .from('provider_availability')
+    .select('weekday,start_minute,end_minute')
+    .eq('provider_id', provider.id)
+    .order('weekday', { ascending: true });
+  if (hoursError) throw new Error(hoursError.message);
+  return {
+    providerId: provider.id as string,
+    acceptsEmergency: Boolean(provider.accepts_emergency),
+    acceptingWork: provider.accepting_work == null ? true : Boolean(provider.accepting_work),
+    windows: (data ?? []).map(row => ({
+      weekday: row.weekday as number,
+      startMinute: row.start_minute as number,
+      endMinute: row.end_minute as number,
+    })),
+  };
+}
+
+/** Replaces the whole week and the emergency opt-in in one save, as the website does. */
+export async function saveMyHours(userId: string, input: ProviderAvailability): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Data services are not connected yet, so your hours cannot be saved.');
+  const { data: provider, error } = await supabase.from('providers').select('id').eq('auth_user_id', userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!provider) throw new Error('Your business profile was not found.');
+  const { error: flagError } = await supabase
+    .from('providers')
+    .update({ accepts_emergency: input.acceptsEmergency })
+    .eq('id', provider.id);
+  if (flagError) throw new Error(flagError.message);
+  const { error: clearError } = await supabase.from('provider_availability').delete().eq('provider_id', provider.id);
+  if (clearError) throw new Error(clearError.message);
+  if (input.windows.length === 0) return;
+  const { error: insertError } = await supabase.from('provider_availability').insert(
+    input.windows.map(w => ({ provider_id: provider.id, weekday: w.weekday, start_minute: w.startMinute, end_minute: w.endMinute })),
+  );
+  if (insertError) throw new Error(insertError.message);
 }
 
 /** One request that reached this business, as this app shows it. */
