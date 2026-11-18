@@ -40,6 +40,7 @@ import { currentPrice } from "@/lib/payments-price";
 import { getMyPaymentState, listPaymentProducts, type MyPaymentState } from "@/lib/payments";
 import { BillingPortalButton, CheckoutButton } from "@/components/payments";
 import { MessageThread } from "@/components/fixit/thread";
+import { JobDetails } from "@/components/fixit/job-details";
 import { PLANS, PLAN_LABELS, planByKey } from "@/features/plans";
 import {
   QUOTE_FIELDS,
@@ -1183,7 +1184,8 @@ export function ProviderDashboard() {
               </span>
             ) : null}
           </span>
-          <span className="block text-[12.5px] text-muted-foreground">{l.description}</span>
+          {/* The details the customer chose, as a list a pro can scan, then their own words. */}
+          <JobDetails description={l.description} compact className="mt-0.5 text-muted-foreground" />
           {(() => {
             // The same estimate the customer saw, so both sides are looking at
             // one figure. It is a range for the category, not the pro's quote.

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, Hash, Home, Phone, Search, Star } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { JobDetails } from "@/components/fixit/job-details";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { EmptyState, ErrorState, LoadingState } from "@/components/app/states";
@@ -200,7 +201,9 @@ function CustomerActivity({ data }: { data: Activity }) {
                     </span>
                   </div>
                   <div className="text-[14px] font-semibold">{humanize(request.category_slug ?? "request")}</div>
-                  <p className="mt-0.5 text-[13.5px] text-foreground/80">{request.description || "No description."}</p>
+                  <div className="mt-0.5 text-foreground/80">
+                    {request.description ? <JobDetails description={request.description} /> : "No description."}
+                  </div>
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
                     <span>{request.quotes} {request.quotes === 1 ? "price" : "prices"} received</span>
                     <span>Accepted: {money(request.accepted_price_cents)}</span>

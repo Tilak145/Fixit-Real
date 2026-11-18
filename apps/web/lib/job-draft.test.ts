@@ -36,6 +36,21 @@ test("missing, broken, empty and stale drafts are ignored", () => {
   assert.equal(readJobDraft(JSON.stringify(stale), now), null);
 });
 
+test("the chosen answers come back with the draft, and bad ones are dropped", () => {
+  const restored = readJobDraft(
+    JSON.stringify({ ...draft, answers: { problem: ["leak", 7], where: "kitchen", size: [], also: ["a"] } }),
+    now,
+  );
+  assert.ok(restored);
+  assert.deepEqual(restored.answers, { problem: ["leak"], also: ["a"] });
+  assert.deepEqual(readJobDraft(JSON.stringify(draft), now)?.answers, {});
+});
+
+test("a draft that holds only chosen answers is still worth bringing back", () => {
+  const onlyAnswers = { savedAt: draft.savedAt, answers: { kind: ["deep"] } };
+  assert.ok(readJobDraft(JSON.stringify(onlyAnswers), now));
+});
+
 test("a draft without an address point does not invent one", () => {
   const restored = readJobDraft(JSON.stringify({ ...draft, lat: "41", lng: null }), now);
   assert.ok(restored);

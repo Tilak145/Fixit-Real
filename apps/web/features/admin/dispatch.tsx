@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, MapPin, Phone, Send, Timer, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
+import { JobDetails } from "@/components/fixit/job-details";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -171,7 +172,9 @@ export function AdminDispatch() {
                           <span className="text-[14px] font-semibold">{humanize(row.category_slug ?? "job")}</span>
                           {row.claimed_by ? <StatusPill value="claimed" /> : <StatusPill value="new" />}
                         </div>
-                        <p className="text-[13.5px] text-foreground/85">{row.description || "No description."}</p>
+                        <div className="text-foreground/85">
+                          {row.description ? <JobDetails description={row.description} /> : "No description."}
+                        </div>
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
                           <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" aria-hidden="true" />{row.city ?? "No city"}</span>
                           <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" aria-hidden="true" />{waited(row.created_at)}</span>

@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { ArrowRight, ChevronDown, MapPin, Search } from "lucide-react";
 import { QuoteRequestForm } from "@/components/fixit/request-quote";
+import { guessService } from "@/lib/job-keywords";
 
 /**
  * The home page's search, which opens the full request form in place.
@@ -49,26 +50,9 @@ export function HeroSearch({
         className="space-y-3"
         onSubmit={(event) => {
           event.preventDefault();
-          const words = job.toLowerCase();
-          const found = [
-            ["plumb", "plumbing"],
-            ["leak", "plumbing"],
-            ["faucet", "plumbing"],
-            ["toilet", "plumbing"],
-            ["drain", "plumbing"],
-            ["heat", "hvac"],
-            ["air", "hvac"],
-            ["furnace", "hvac"],
-            ["electric", "electrical"],
-            ["outlet", "electrical"],
-            ["light", "electrical"],
-            ["garage", "garage-doors"],
-            ["roof", "roofing"],
-            ["clean", "cleaning"],
-            ["pest", "pest-control"],
-            ["lawn", "landscaping"],
-          ].find(([word]) => words.includes(word));
-          setService(found ? found[1] : null);
+          // What they typed picks the service, and the form then asks the quick
+          // questions for it (what kind of cleaning, how big, and so on).
+          setService(guessService(job));
           setOpen(true);
         }}
       >

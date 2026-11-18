@@ -14,6 +14,15 @@ import { CitySelect } from "@/components/fixit/city-select";
 import { MediaPicker, type PendingMedia } from "@/components/fixit/media-picker";
 import { uploadRequestMedia } from "@/lib/fixit";
 import { JOB_DRAFT_KEY, readJobDraft } from "@/lib/job-draft";
+import { JobQuestionsDialog } from "@/components/fixit/job-questions-dialog";
+import { JobSummary } from "@/components/fixit/job-summary";
+import {
+  cleanAnswers,
+  composeDescription,
+  hasAnswers,
+  questionsFor,
+  type JobAnswers,
+} from "@/lib/job-questions";
 import {
   BUDGET_PRESETS,
   parseDollarsToCents,
@@ -39,6 +48,19 @@ const SERVICE_SLUGS = [
   "pest-control",
   "landscaping",
 ];
+
+const SERVICE_NAMES: Record<string, string> = {
+  plumbing: "Plumbing",
+  electrical: "Electrical",
+  hvac: "HVAC",
+  "garage-doors": "Garage door",
+  roofing: "Roofing",
+  "appliance-repair": "Appliance repair",
+  handyman: "Handyman",
+  cleaning: "Cleaning",
+  "pest-control": "Pest control",
+  landscaping: "Landscaping",
+};
 
 function readSavedService(): string | null {
   try {
@@ -88,6 +110,15 @@ export function QuoteRequestForm({
   const [estimate, setEstimate] = useState<CostEstimate | null>(null);
   const [categorySlug, setCategorySlug] = useState(fromLink("service") ?? "plumbing");
   const [description, setDescription] = useState(() => fromLink("job") ?? "");
+  // What the customer tapped in the quick questions about the job. It is kept
+  // to the chosen service, so changing the service starts the questions over.
+  const [answers, setAnswers] = useState<JobAnswers>({});
+  // The questions popup. It opens by itself when the customer arrives already
+  // knowing what they need (they typed "cleaning" on the home page, or came from
+  // a service page), and any time from the "Change" and "Answer a few questions"
+  // buttons in the form.
+  const [asking, setAsking] = useState(false);
+  const askedRef = useRef(false);
   // A customer can say the job cannot wait. The flag is always the customer's.
   const [emergency, setEmergency] = useState(false);
   // The details a signed-in customer already gave us, used to fill the form.
@@ -136,6 +167,9 @@ export function QuoteRequestForm({
       setCategorySlug(draft.categorySlug);
     }
     if (draft.description) setDescription(draft.description);
+    // Answers belong to the service they were given for; a link naming a
+    // different service starts the questions fresh.
+    if (!fromLink("service") || fromLink("service") === draft.categorySlug) setAnswers(draft.answers);
     setPrefill((p) => ({
       ...p,
       city: p.city || draft.city,
@@ -148,6 +182,26 @@ export function QuoteRequestForm({
     if (draft.customMax) setCustomMax(draft.customMax);
     setHadDraft(true);
     // Runs once: the form is the thing being restored, not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ask the quick questions first when a service came with the visit, unless a
+  // saved draft already holds answers for that same service.
+  useEffect(() => {
+    if (askedRef.current) return;
+    askedRef.current = true;
+    const linked = fromLink("service");
+    if (!linked || !SERVICE_SLUGS.includes(linked) || questionsFor(linked).length === 0) return;
+    let raw: string | null = null;
+    try {
+      raw = window.localStorage.getItem(JOB_DRAFT_KEY);
+    } catch {
+      raw = null;
+    }
+    const draft = readJobDraft(raw);
+    if (draft && draft.categorySlug === linked && Object.keys(draft.answers).length > 0) return;
+    setAsking(true);
+    // Runs once, when the form opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -170,13 +224,14 @@ export function QuoteRequestForm({
           customMax,
           lat: jobPoint?.lat ?? null,
           lng: jobPoint?.lng ?? null,
+          answers,
           savedAt: new Date().toISOString(),
         }),
       );
     } catch {
       // Private browsing refuses storage; the form simply is not remembered.
     }
-  }, [categorySlug, description, prefill.city, prefill.address, emergency, budgetId, customMin, customMax, jobPoint]);
+  }, [categorySlug, description, answers, prefill.city, prefill.address, emergency, budgetId, customMin, customMax, jobPoint]);
 
   function resolveBudget(): BudgetRange {
     if (budgetId === "custom") {
@@ -222,6 +277,7 @@ export function QuoteRequestForm({
   }, [fromLink]);
 
   function chooseService(slug: string) {
+    if (slug !== categorySlug) setAnswers({});
     setCategorySlug(slug);
     try {
       window.localStorage.setItem(SERVICE_KEY, slug);
@@ -233,8 +289,9 @@ export function QuoteRequestForm({
   // Recompute the estimate whenever the description, service or urgency changes.
   useEffect(() => {
     const urgency = emergency ? "emergency" : undefined;
-    setEstimate(estimateJob({ text: description, categorySlug, urgency }));
-  }, [description, categorySlug, emergency]);
+    // The estimate reads what was tapped as well as what was typed.
+    setEstimate(estimateJob({ text: composeDescription(categorySlug, answers, description), categorySlug, urgency }));
+  }, [description, answers, categorySlug, emergency]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -269,7 +326,12 @@ export function QuoteRequestForm({
       .from("quote_requests")
       .insert({
         category_slug: String(form.get("category_slug") ?? "plumbing"),
-        description: String(form.get("description") ?? ""),
+        // The chosen details go to the professionals ahead of the customer's own words.
+        description: composeDescription(
+          String(form.get("category_slug") ?? "plumbing"),
+          answers,
+          String(form.get("description") ?? ""),
+        ),
         customer_name: String(form.get("customer_name") ?? ""),
         customer_email: String(form.get("customer_email") ?? ""),
         customer_phone: String(form.get("customer_phone") ?? "") || null,
@@ -351,6 +413,7 @@ export function QuoteRequestForm({
   }
 
   return (
+    <>
     <form
       id="quote-form"
       onSubmit={onSubmit}
@@ -418,6 +481,16 @@ export function QuoteRequestForm({
             className={inputClass}
           />
         </label>
+        {questionsFor(categorySlug).length > 0 ? (
+          <div className="sm:col-span-2">
+            <JobSummary
+              categorySlug={categorySlug}
+              serviceName={SERVICE_NAMES[categorySlug] ?? "service"}
+              answers={cleanAnswers(categorySlug, answers)}
+              onOpen={() => setAsking(true)}
+            />
+          </div>
+        ) : null}
         <label className="block sm:col-span-2">
           <span className="mb-1.5 block text-xs font-bold text-foreground/70">Service address</span>
           <AddressInput
@@ -461,14 +534,20 @@ export function QuoteRequestForm({
           />
         </div>
         <label className="block sm:col-span-2">
-          <span className="mb-1.5 block text-xs font-bold text-foreground/70">Describe the job</span>
+          <span className="mb-1.5 block text-xs font-bold text-foreground/70">
+            {hasAnswers(categorySlug, answers) ? "Anything else the pro should know? (optional)" : "Describe the job"}
+          </span>
           <textarea
             name="description"
-            required
+            required={!hasAnswers(categorySlug, answers)}
             rows={4}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="For example: kitchen faucet leaking, need repair or replacement"
+            placeholder={
+              hasAnswers(categorySlug, answers)
+                ? "For example: two dogs at home, the back door is the easiest way in"
+                : "For example: kitchen faucet leaking, need repair or replacement"
+            }
             className="w-full rounded-md border border-input bg-input px-3 py-2.5 text-sm outline-none ring-ring focus:ring-2"
           />
         </label>
@@ -662,6 +741,19 @@ export function QuoteRequestForm({
         for you.
       </p>
     </form>
+    {asking ? (
+      <JobQuestionsDialog
+        key={categorySlug}
+        categorySlug={categorySlug}
+        serviceName={SERVICE_NAMES[categorySlug] ?? "service"}
+        initial={answers}
+        onDone={(next) => {
+          setAnswers(cleanAnswers(categorySlug, next));
+          setAsking(false);
+        }}
+      />
+    ) : null}
+    </>
   );
 }
 

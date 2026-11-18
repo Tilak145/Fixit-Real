@@ -27,6 +27,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { QuoteComparison } from "@/components/fixit/quote-comparison";
 import { MessageThread } from "@/components/fixit/thread";
+import { JobDetails } from "@/components/fixit/job-details";
 import { AddressInput } from "@/components/fixit/address-input";
 import { ReviewForm } from "@/components/fixit/review-form";
 
@@ -97,7 +98,9 @@ function RequestCard({ request }: { request: MyRequest }) {
         </span>
         <span className="ml-auto text-[12.5px] text-muted-foreground">{formatDate(request.created_at)}</span>
       </div>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{request.description}</p>
+      <div className="mt-2 leading-relaxed text-muted-foreground">
+        <JobDetails description={request.description} />
+      </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
         <span>{request.city}</span>
         {request.provider_name ? (

@@ -20,6 +20,8 @@ export interface JobDraft {
   /** Where the address is, so an emergency keeps its distance to the nearest crew. */
   lat: number | null;
   lng: number | null;
+  /** The tap-to-choose answers about the job (question id to chosen option ids). */
+  answers: Record<string, string[]>;
   savedAt: string;
 }
 
@@ -27,6 +29,19 @@ export interface JobDraft {
 export const JOB_DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const text = (value: unknown): string => (typeof value === "string" ? value : "");
+
+/** Saved answers, keeping only question ids that map to lists of text. */
+function answersOf(value: unknown): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return result;
+  for (const [key, chosen] of Object.entries(value as Record<string, unknown>)) {
+    if (Array.isArray(chosen)) {
+      const ids = chosen.filter((id): id is string => typeof id === "string");
+      if (ids.length > 0) result[key] = ids;
+    }
+  }
+  return result;
+}
 
 /**
  * The saved draft as this form needs it, or null when there is none, it is
@@ -57,6 +72,7 @@ export function readJobDraft(raw: unknown, now: Date = new Date()): JobDraft | n
     customMax: text(value.customMax),
     lat: lat != null && lng != null ? lat : null,
     lng: lat != null && lng != null ? lng : null,
+    answers: answersOf(value.answers),
     savedAt: savedAt.toISOString(),
   };
   // A draft with nothing in it is not worth bringing back.
@@ -65,6 +81,7 @@ export function readJobDraft(raw: unknown, now: Date = new Date()): JobDraft | n
     !draft.address.trim() &&
     !draft.city.trim() &&
     !draft.budgetId &&
-    !draft.emergency;
+    !draft.emergency &&
+    Object.keys(draft.answers).length === 0;
   return empty ? null : draft;
 }
