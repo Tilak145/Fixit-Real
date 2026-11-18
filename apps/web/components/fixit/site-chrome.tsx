@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { MapPin, ChevronDown, UserRound, Wrench, LogIn, LayoutDashboard, Bell, MessageSquare } from "lucide-react";
 import { useWaitingQuotes } from "@/lib/waiting-quotes";
 import { useUnreadMessages } from "@/lib/unread-messages";
-import { SITE_EMAIL, SITE_PHONE, SITE_PHONE_HREF } from "@/lib/site-contact";
+import { SITE_EMAIL, SITE_IN_TESTING, SITE_PHONE, SITE_PHONE_HREF } from "@/lib/site-contact";
 import { ProWindow, type ProWindowMode } from "@/components/fixit/pro-window";
 import { FixItLogo } from "./logo";
 import { useAuth } from "@/lib/auth-context";
@@ -202,6 +202,33 @@ function SectionLink({ id, className, children }: { id: string; className?: stri
   );
 }
 
+/**
+ * A slim notice above the header while FixIt is still being tested, so nobody
+ * mistakes an early version for the finished service. Turn it off with
+ * SITE_IN_TESTING in lib/site-contact.ts.
+ */
+function TestingBanner() {
+  if (!SITE_IN_TESTING) return null;
+  return (
+    <div
+      role="status"
+      data-testid="testing-banner"
+      className="border-b border-[#EBD38F] bg-[#FFF3D6] px-4 py-1.5 text-center text-[12.5px] leading-snug text-[#6B4300]"
+    >
+      <strong className="mr-1.5 rounded bg-[#6B4300] px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-[#FFF3D6]">
+        Testing phase
+      </strong>
+      FixIt is still being tested, so some things may change or not work yet.{" "}
+      <a
+        href={`mailto:${SITE_EMAIL}?subject=${encodeURIComponent("FixIt testing feedback")}`}
+        className="font-bold underline underline-offset-2 hover:text-black"
+      >
+        Report a problem
+      </a>
+    </div>
+  );
+}
+
 export function SiteHeader({ city }: { city?: string | null } = {}) {
   // Signed-out visitors keep the plain Log in / Join as a Pro links, so the
   // page renders the same before the session is known.
@@ -216,6 +243,8 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
   const unread = useUnreadMessages(signedIn);
 
   return (
+    <>
+    <TestingBanner />
     <header className="sticky top-0 z-40 border-b border-border bg-card">
       <div className="mx-auto flex max-w-[1280px] items-center gap-3 px-4 py-4 sm:gap-8 sm:px-6">
         <FixItLogo />
@@ -336,6 +365,7 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
       ) : null}
       <ProWindow mode={proWindow} onClose={() => setProWindow(null)} />
     </header>
+    </>
   );
 }
 
