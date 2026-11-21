@@ -17,6 +17,7 @@ import { AddressField } from '@/components/fixit/address-field';
 import { MediaPicker, type PendingPhoto } from '@/components/fixit/media-picker';
 import { uploadRequestMedia } from '@/lib/fixit';
 import { useAuth } from '@/features/auth';
+import { categoryIcon } from '@/lib/category-icons';
 import { JobQuestionsModal } from '@/components/fixit/job-questions-modal';
 import { JobSummary } from '@/components/fixit/job-summary';
 import { estimateJob, formatEstimateRange } from '@/lib/fixit-estimate';
@@ -33,10 +34,12 @@ const SERVICE_KEY = 'fixit.request.service';
 
 /** Ask for a free quote: the job, the place and how to reach the customer. */
 export default function RequestPage() {
-  const params = useLocalSearchParams<{ service?: string; pro?: string }>();
+  const params = useLocalSearchParams<{ service?: string; pro?: string; text?: string }>();
   const { session } = useAuth();
   const [category, setCategory] = useState(params.service ?? 'plumbing');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(params.text ?? '');
+  // The service is known when the visit names one or one is picked here.
+  const [picked, setPicked] = useState(Boolean(params.service));
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -49,7 +52,7 @@ export default function RequestPage() {
   }, [chosenCity.city]);
   // The quick questions about the job, asked in their own window.
   const [answers, setAnswers] = useState<JobAnswers>({});
-  const [questionsOpen, setQuestionsOpen] = useState(true);
+  const [questionsOpen, setQuestionsOpen] = useState(Boolean(params.service));
   const [emergency, setEmergency] = useState(false);
   // The cities the owner serves, offered in place of typing. Until the list
   // arrives or if it is empty, the field stays a plain text input.
@@ -71,21 +74,6 @@ export default function RequestPage() {
     }
     return presetRange(budgetId);
   }
-
-  // Reuse the service chosen last time, unless this visit names one
-  // (?service=roofing) or the customer changes it here.
-  useEffect(() => {
-    if (params.service) return;
-    let active = true;
-    AsyncStorage.getItem(SERVICE_KEY)
-      .then(saved => {
-        if (active && saved && CORE_CATEGORIES.some(item => item.slug === saved)) setCategory(saved);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [params.service]);
 
   function chooseService(slug: string) {
     if (slug !== category) {
@@ -175,6 +163,35 @@ export default function RequestPage() {
     [category, answers, description, emergency],
   );
 
+  // With no service named yet (and none guessed from the words typed on Home),
+  // ask which one first, so the job never starts on a service nobody picked.
+  if (!picked) {
+    return (
+      <Screen back title="What do you need?">
+        {description.trim() ? (
+          <View className="bg-secondary gap-1 rounded-2xl px-4 py-3">
+            <Text className="text-muted-foreground text-[11px] font-bold uppercase tracking-wide">You wrote</Text>
+            <Text className="text-[14px] leading-5">{description.trim()}</Text>
+          </View>
+        ) : null}
+        <Text className="text-muted-foreground text-sm leading-6">Choose the kind of work, and we will ask a few quick questions about it.</Text>
+        <View className="flex-row flex-wrap justify-between gap-y-2.5">
+          {CORE_CATEGORIES.map(item => (
+            <Pressable
+              key={item.slug}
+              accessibilityRole="button"
+              accessibilityLabel={item.name}
+              onPress={() => { setPicked(true); chooseService(item.slug); setQuestionsOpen(true); }}
+              style={{ width: '48.5%' }}
+              className="bg-card border-border flex-row items-center gap-3 rounded-2xl border p-3 active:opacity-70">
+              <Icon as={categoryIcon(item.slug)} className="text-primary size-6" />
+              <Text numberOfLines={2} className="flex-1 text-[13.5px] font-semibold">{item.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </Screen>
+    );
+  }
   if (status === 'done') {
     return (
       <Screen back title="Request a quote">

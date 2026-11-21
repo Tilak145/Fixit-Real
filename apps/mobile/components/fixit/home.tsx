@@ -1,7 +1,9 @@
-import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import type { Edge } from 'react-native-safe-area-context';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { guessService } from '@/lib/job-keywords';
 import { ArrowRight, ChevronRight, ClipboardList, Search, ShieldCheck, ThumbsUp, Users, Zap } from 'lucide-react-native';
 import { Screen, Section } from '@/components/screen';
 import { FixItLogo } from '@/components/fixit/logo';
@@ -35,6 +37,13 @@ const steps = [
 export default function HomePage({ edges }: { edges?: Edge[] }) {
   const { width } = useWindowDimensions();
   const { city, options, choose } = useChosenCity();
+  // What the customer types here picks the service for them: 'my sink is leaking' opens Plumbing.
+  const [need, setNeed] = useState('');
+  const startRequest = () => {
+    const text = need.trim();
+    const service = guessService(text);
+    router.push({ pathname: '/request', params: { ...(service ? { service } : {}), ...(text ? { text } : {}) } });
+  };
   const ready = city !== null;
   // Featured businesses are paid placements, taken from the two top plans.
   const featured = useQuery({
@@ -94,19 +103,26 @@ export default function HomePage({ edges }: { edges?: Edge[] }) {
             Tell us the problem. Trusted local pros send you free prices.
           </Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Request a free quote"
-          onPress={() => router.push('/request')}
-          className="mt-5 h-14 flex-row items-center justify-between rounded-full bg-white pl-5 pr-2 active:opacity-90">
-          <View className="flex-row items-center gap-2.5">
-            <Icon as={Search} className="text-muted-foreground size-5" />
-            <Text className="text-muted-foreground text-[15px]">Describe your repair…</Text>
-          </View>
-          <View className="bg-accent size-10 items-center justify-center rounded-full">
+        <View className="mt-5 h-14 flex-row items-center rounded-full bg-white pl-5 pr-2">
+          <Icon as={Search} className="text-muted-foreground mr-2.5 size-5" />
+          <TextInput
+            value={need}
+            onChangeText={setNeed}
+            onSubmitEditing={startRequest}
+            returnKeyType="go"
+            placeholder="Describe your repair…"
+            accessibilityLabel="Describe your repair"
+            className="text-foreground h-full flex-1 text-[15px]"
+            placeholderTextColorClassName="accent-muted-foreground"
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Request a free quote"
+            onPress={startRequest}
+            className="bg-accent size-10 items-center justify-center rounded-full active:opacity-90">
             <Icon as={ArrowRight} className="text-accent-foreground size-5" />
-          </View>
-        </Pressable>
+          </Pressable>
+        </View>
         <View className="mt-4 flex-row gap-4">
           {trustPoints.map(point => (
             <View key={point.label} className="flex-row items-center gap-1.5">
