@@ -48,6 +48,8 @@ function Heading({ children }: { children: string }) {
 export function MenuButton() {
   const [open, setOpen] = useState(false);
   const { session } = useAuth();
+  const meta: Record<string, unknown> = session?.user.user_metadata ?? {};
+  const name = [meta.full_name, meta.name].find((value): value is string => typeof value === 'string' && value.trim() !== '')?.trim() ?? null;
   // Close first, then move, so the panel is gone before the next screen shows.
   const go: Go = run => {
     setOpen(false);
@@ -73,8 +75,8 @@ export function MenuButton() {
                   <Icon as={X} className="text-muted-foreground size-6" />
                 </Pressable>
               </View>
-              <Text className="text-muted-foreground px-3 pb-2 text-[12.5px]">
-                {session?.user.email ? 'Signed in as ' + session.user.email : 'Not signed in'}
+              <Text className="px-3 pb-2 text-[15px] font-semibold">
+                {name ? 'Hello, ' + name : session ? 'Signed in' : 'Not signed in'}
               </Text>
 
               <Heading>Menu</Heading>
