@@ -70,49 +70,43 @@ export function ProLogo({ pro, background = 'bg-white' }: { pro: ProSummary; bac
   );
 }
 
-/** A professional as a card on the customer's list. */
+/** A professional as a compact row on the customer's list: logo left, facts right, the whole row opens the profile. */
 export function ProCard({ pro }: { pro: ProSummary }) {
   const open = () => router.push({ pathname: '/pro/[id]', params: { id: pro.id } });
   return (
-    <Card className="gap-0 overflow-hidden py-0">
-      <View className="bg-muted h-40 w-full">
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={'View ' + pro.business_name}
+      onPress={open}
+      className="bg-card border-border flex-row gap-3.5 rounded-3xl border p-3 active:opacity-90">
+      <View className="bg-muted size-[92px] overflow-hidden rounded-2xl">
         <ProLogo pro={pro} background="bg-muted" />
-        <AvailabilityBadge pro={pro} className="absolute bottom-2.5 left-2.5" />
       </View>
-      <View className="gap-2.5 p-4">
+      <View className="flex-1 justify-between py-0.5">
         <View className="gap-1">
-          <Text className="text-[17px] font-semibold">{pro.business_name}</Text>
+          <View className="flex-row items-center gap-1.5">
+            <Text numberOfLines={2} className="flex-1 text-[16px] font-semibold leading-5">{pro.business_name}</Text>
+            {pro.verified ? <Icon as={BadgeCheck} className="size-4 text-[#2E9E4F]" /> : null}
+          </View>
           {pro.review_count > 0 ? (
-            <View className="flex-row items-center gap-2">
-              <Stars rating={pro.rating} />
-              <Text className="text-sm font-semibold">{pro.rating.toFixed(1)}</Text>
-              <Text className="text-muted-foreground text-[13px]">({pro.review_count})</Text>
+            <View className="flex-row items-center gap-1.5">
+              <Stars rating={pro.rating} className="size-3" />
+              <Text className="text-[12.5px] font-semibold">{pro.rating.toFixed(1)}</Text>
+              <Text className="text-muted-foreground text-[12px]">({pro.review_count})</Text>
             </View>
           ) : (
-            <Text className="text-muted-foreground text-[13px] font-semibold">New on FixIt · No reviews yet</Text>
+            <Text className="text-muted-foreground text-[12px] font-semibold">New on FixIt</Text>
           )}
+          <View className="flex-row items-center gap-1">
+            <Icon as={MapPin} className="text-muted-foreground size-3" />
+            <Text numberOfLines={1} className="text-muted-foreground flex-1 text-[12px]">{pro.city}</Text>
+          </View>
         </View>
-        <View className="flex-row items-center gap-1.5">
-          <Icon as={MapPin} className="text-accent size-3.5" />
-          <Text numberOfLines={1} className="text-muted-foreground flex-1 text-[13px]">{pro.city}</Text>
-          {pro.verified ? (
-            <View className="flex-row items-center gap-1">
-              <Icon as={BadgeCheck} className="size-3.5 text-[#2E9E4F]" />
-              <Text className="text-[11px] font-semibold text-[#2E9E4F]">Verified</Text>
-            </View>
-          ) : null}
-        </View>
-        <Pressable
-          accessibilityLabel={'View ' + pro.business_name}
-          onPress={open}
-          className="bg-primary h-11 items-center justify-center rounded-full active:bg-primary/80">
-          <Text className="text-primary-foreground text-sm font-semibold">View Profile</Text>
-        </Pressable>
+        <AvailabilityBadge pro={pro} className="mt-1.5 self-start" />
       </View>
-    </Card>
+    </Pressable>
   );
 }
-
 /**
  * A featured business on the home screen: its logo large on a warm background, a
  * "Featured" badge, and the whole card opens the profile. Featured spots are paid

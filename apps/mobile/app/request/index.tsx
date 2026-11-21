@@ -26,7 +26,7 @@ import { BUDGET_PRESETS, parseDollarsToCents, presetRange, validateBudgetRange }
 
 type Status = 'idle' | 'sending' | 'done' | 'error';
 
-const inputClass = 'border-input bg-input/30 text-foreground h-11 w-full rounded-full border px-4 text-base';
+const inputClass = 'border-border bg-card text-foreground h-12 w-full rounded-2xl border px-4 text-base';
 
 // The service a customer picked stays picked until they choose another one.
 const SERVICE_KEY = 'fixit.request.service';
@@ -286,9 +286,9 @@ export default function RequestPage() {
         </Pressable>
 
         {estimate ? (
-          <View className="gap-1 rounded-xl border border-[#BFD7F2] bg-[#EEF5FD] p-4">
-            <Text className="text-[11px] font-bold uppercase tracking-wide text-[#0B2545]">Estimated cost</Text>
-            <Text className="text-[22px] font-bold text-[#0B2545]">{formatEstimateRange(estimate.lowCents, estimate.highCents)}</Text>
+          <View className="gap-1 rounded-xl border border-primary/20 bg-secondary p-4">
+            <Text className="text-primary text-[11px] font-bold uppercase tracking-wide">Estimated cost</Text>
+            <Text className="text-primary text-[22px] font-bold">{formatEstimateRange(estimate.lowCents, estimate.highCents)}</Text>
             <Text className="text-foreground/80 text-[13px] leading-5">{estimate.summary}</Text>
             {estimate.emergency ? (
               <Text className="text-[12px] font-semibold text-[#8A1F11]">Emergency / same-day work is usually priced higher than this range.</Text>

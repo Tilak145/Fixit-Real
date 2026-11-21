@@ -17,7 +17,7 @@ type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>
 export function TabBar({ state, descriptors, navigation, icons }: TabBarProps & { icons: Record<string, LucideIcon> }) {
   const insets = useSafeAreaInsets();
   return (
-    <View role="tablist" className="border-border bg-background flex-row border-t px-2 pt-2" style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
+    <View role="tablist" className="border-border bg-card flex-row border-t px-3 pt-2" style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
       {state.routes.map((route, index) => {
         const options = descriptors[route.key]?.options ?? {};
         const label = typeof options.title === 'string' ? options.title : route.name;
@@ -34,9 +34,9 @@ export function TabBar({ state, descriptors, navigation, icons }: TabBarProps & 
             aria-selected={focused}
             accessibilityLabel={label}
             onPress={onPress}
-            className={cn('min-h-12 flex-1 items-center justify-center gap-1 rounded-xl', Platform.select({ web: 'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50' }))}>
-            {icon ? <Icon as={icon} className={cn('size-[22px]', focused ? 'text-foreground' : 'text-muted-foreground')} /> : null}
-            <Text className={cn('text-[11px] font-medium', focused ? 'text-foreground' : 'text-muted-foreground')}>{label}</Text>
+            className={cn('min-h-12 flex-1 items-center justify-center gap-1 rounded-2xl', focused && 'bg-secondary', Platform.select({ web: 'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50' }))}>
+            {icon ? <Icon as={icon} className={cn('size-[22px]', focused ? 'text-primary' : 'text-muted-foreground')} /> : null}
+            <Text className={cn('text-[11px] font-semibold', focused ? 'text-primary' : 'text-muted-foreground')}>{label}</Text>
           </Pressable>
         );
       })}

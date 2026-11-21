@@ -1,4 +1,4 @@
-import { useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import type { Edge } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -76,33 +76,42 @@ export default function HomePage({ edges }: { edges?: Edge[] }) {
         </View>
       }>
       {/* Hero */}
-      <View className="gap-4 rounded-3xl bg-[#0B2545] p-5">
+      <View className="bg-primary overflow-hidden rounded-[28px] p-6">
+        <View className="absolute -right-10 -top-12 size-44 rounded-full bg-white/10" />
+        <View className="absolute -bottom-16 right-10 size-36 rounded-full bg-white/5" />
         <View className="gap-1.5">
-          <Text role="heading" className="text-[26px] font-bold leading-8 text-white">
-            Get your home fixed today
+          <Text className="text-[12px] font-bold uppercase tracking-widest text-white/70">
+            {city ? 'In ' + city : 'Local home services'}
           </Text>
-          <Text className="text-[14px] leading-5 text-[#DCE6F2]">
-            Tell us what is wrong and we will find trusted local pros.
+          <Text role="heading" className="text-[28px] font-bold leading-9 text-white">
+            What needs fixing today?
+          </Text>
+          <Text className="text-[14px] leading-5 text-white/80">
+            Tell us the problem. Trusted local pros send you free prices.
           </Text>
         </View>
-        <View className="flex-row gap-2">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Request a free quote"
+          onPress={() => router.push('/request')}
+          className="mt-5 h-14 flex-row items-center justify-between rounded-full bg-white pl-5 pr-2 active:opacity-90">
+          <View className="flex-row items-center gap-2.5">
+            <Icon as={Search} className="text-muted-foreground size-5" />
+            <Text className="text-muted-foreground text-[15px]">Describe your repair…</Text>
+          </View>
+          <View className="bg-accent size-10 items-center justify-center rounded-full">
+            <Icon as={ArrowRight} className="text-accent-foreground size-5" />
+          </View>
+        </Pressable>
+        <View className="mt-4 flex-row gap-4">
           {trustPoints.map(point => (
-            <View key={point.label} className="flex-1 items-center gap-1">
-              <Icon as={point.icon} className="size-5 text-white" />
-              <Text className="text-center text-[11px] font-semibold text-[#DCE6F2]">{point.label}</Text>
+            <View key={point.label} className="flex-row items-center gap-1.5">
+              <Icon as={point.icon} className="size-3.5 text-white/80" />
+              <Text className="text-[11.5px] font-semibold text-white/80">{point.label}</Text>
             </View>
           ))}
         </View>
-        <Button
-          size="lg"
-          className="bg-accent active:bg-accent/90 w-full"
-          accessibilityLabel="Request a free quote"
-          onPress={() => router.push('/request')}>
-          <Icon as={Search} className="text-accent-foreground size-5" />
-          <Text className="text-accent-foreground text-base font-semibold">Find a professional</Text>
-        </Button>
       </View>
-
       {/* Services */}
       <Section title="Popular home services">
         <View className="flex-row flex-wrap gap-3">
@@ -122,17 +131,21 @@ export default function HomePage({ edges }: { edges?: Edge[] }) {
       {/* Featured businesses */}
       {featured.data && featured.data.length > 0 ? (
         <Section title="Featured professionals">
-          <View className="gap-4">
-            {featured.data.map(pro => (
-              <FeaturedProCard key={pro.id} pro={pro} />
-            ))}
-            <Text className="text-muted-foreground text-center text-[11.5px]">Featured spots are paid placements.</Text>
+          <View className="gap-2">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3 pr-5" className="-mx-5 pl-5">
+              {featured.data.map(pro => (
+                <View key={pro.id} style={{ width: Math.min(300, width - 72) }}>
+                  <FeaturedProCard pro={pro} />
+                </View>
+              ))}
+            </ScrollView>
+            <Text className="text-muted-foreground text-[11.5px]">Featured spots are paid placements.</Text>
           </View>
         </Section>
       ) : null}
       {/* How it works */}
       <Section title="How FixIt works">
-        <Card className="gap-4 py-5">
+        <Card className="bg-secondary gap-4 border-0 py-5 shadow-none">
           <CardContent className="gap-4 px-5">
             {steps.map((step, index) => (
               <View key={step.title} className="flex-row items-start gap-3">

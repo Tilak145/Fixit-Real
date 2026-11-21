@@ -58,7 +58,7 @@ function NextUpItem({
   onPress: () => void;
 }) {
   const iconTone = {
-    blue: 'bg-[#E9F1FB]',
+    blue: 'bg-[#DDEFF6]',
     violet: 'bg-[#F1ECFB]',
     amber: 'bg-[#FFF3E0]',
   }[tone];
@@ -71,7 +71,7 @@ function NextUpItem({
     <Button
       variant="outline"
       onPress={onPress}
-      className="h-auto justify-start gap-3 rounded-xl bg-background py-3"
+      className="bg-card h-auto justify-start gap-3 rounded-2xl border-0 py-3 shadow-none"
       accessibilityLabel={label}
     >
       <View className={cn('size-10 items-center justify-center rounded-lg', iconTone)}>
@@ -238,7 +238,7 @@ function BusinessDashboard() {
       <CoverageEditor providerId={pro.id} plan={pro.plan} />
 
       {/* Start here: what needs this business next, before any lists. */}
-      <View className="bg-muted/40 border-border gap-3 rounded-2xl border p-4">
+      <View className="bg-secondary gap-3 rounded-3xl p-4">
         <View className="flex-row items-baseline justify-between gap-2">
           <Text role="heading" className="text-[15px] font-semibold">Next up</Text>
           <Text className="text-muted-foreground text-[12px]">

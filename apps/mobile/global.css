@@ -13,3 +13,49 @@
   --font-semibold: 'Geist_600SemiBold';
   --font-bold: 'Geist_700Bold';
 }
+
+/* FixIt app look: warm paper background, deep teal and coral. This is the app's
+   own identity, separate from the website's white, navy and orange. These values
+   win over the generated defaults above. */
+@layer theme {
+  :root {
+    @variant light {
+      --color-background: #F7F4EE;
+      --color-foreground: #17262B;
+      --color-card: #FFFFFF;
+      --color-card-foreground: #17262B;
+      --color-popover: #FFFFFF;
+      --color-popover-foreground: #17262B;
+      --color-primary: #0F5C63;
+      --color-primary-foreground: #FFFFFF;
+      --color-secondary: #E6F0EE;
+      --color-secondary-foreground: #0F5C63;
+      --color-muted: #EFEAE1;
+      --color-muted-foreground: #6A7478;
+      --color-accent: #EE6C3B;
+      --color-accent-foreground: #FFFFFF;
+      --color-border: #E6E0D4;
+      --color-input: #DDD6C8;
+      --color-ring: #0F5C63;
+    }
+    @variant dark {
+      --color-background: #0E1A1D;
+      --color-foreground: #F3F1EA;
+      --color-card: #16282C;
+      --color-card-foreground: #F3F1EA;
+      --color-popover: #16282C;
+      --color-popover-foreground: #F3F1EA;
+      --color-primary: #5BC2C9;
+      --color-primary-foreground: #0E1A1D;
+      --color-secondary: #1D3338;
+      --color-secondary-foreground: #BFE8EB;
+      --color-muted: #1D3136;
+      --color-muted-foreground: #9AAAAE;
+      --color-accent: #F27F55;
+      --color-accent-foreground: #0E1A1D;
+      --color-border: #284046;
+      --color-input: #335058;
+      --color-ring: #5BC2C9;
+    }
+  }
+}
