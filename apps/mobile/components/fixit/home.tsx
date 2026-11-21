@@ -13,6 +13,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import { Icon } from '@/components/ui/icon';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { MenuButton } from '@/components/fixit/side-menu';
 import { CityPicker } from '@/components/fixit/city-picker';
 import { CORE_CATEGORIES, listCategoryProCounts, listPros } from '@/lib/fixit';
 import { featuredSeed, pickFeatured } from '@/lib/featured-pros';
@@ -71,7 +72,10 @@ export default function HomePage({ edges }: { edges?: Edge[] }) {
       edges={edges}
       header={
         <View className="flex-row items-center justify-between px-5 pb-3 pt-2">
-          <FixItLogo />
+          <View className="flex-row items-center gap-3">
+            <MenuButton />
+            <FixItLogo />
+          </View>
           <CityPicker city={city} options={options} onChange={choose} />
         </View>
       }>

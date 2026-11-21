@@ -311,6 +311,7 @@ export default function RequestsPage() {
     <Screen
       edges={['top']}
       title="My requests"
+      menu
       description="Quotes you asked local professionals for"
       action={
         <Button size="icon" accessibilityLabel="Request a quote" onPress={() => router.push('/request')}>

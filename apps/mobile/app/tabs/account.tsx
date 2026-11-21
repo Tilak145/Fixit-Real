@@ -129,7 +129,7 @@ function Account() {
 /** The Account tab: the signed-in customer, or the sign-in form. */
 export default function AccountPage() {
   return (
-    <Screen edges={['top']} className="grow" title="Account">
+    <Screen edges={['top']} className="grow" title="Account" menu>
       <AccountGate>
         <Account />
       </AccountGate>

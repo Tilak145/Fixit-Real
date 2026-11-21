@@ -7,6 +7,7 @@ import { withUniwind } from 'uniwind';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { MenuButton } from '@/components/fixit/side-menu';
 import { TestingBanner } from '@/components/fixit/testing-banner';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,8 @@ type ScreenProps = {
   header?: ReactNode;
   /** Pinned under the content, above the bottom safe area: the screen's primary action. */
   footer?: ReactNode;
+  /** Shows the menu button at the left of the title bar (the main tab screens). */
+  menu?: boolean;
   scroll?: boolean;
   /** Safe-area edges this screen pads. Screens inside the tab bar pass ['top']. */
   edges?: Edge[];
@@ -38,13 +41,13 @@ type ScreenProps = {
 };
 
 /** One phone screen: safe areas, a header, scrolling content and an optional pinned footer. */
-export function Screen({ title, description, back = false, action, header, footer, scroll = true, edges, className, children }: ScreenProps) {
+export function Screen({ title, description, back = false, menu = false, action, header, footer, scroll = true, edges, className, children }: ScreenProps) {
   const content = cn('gap-6 px-5 pb-8 pt-2', className);
   return (
     <SafeAreaView edges={edges ?? ['top', 'bottom']} className="bg-background flex-1">
       <TestingBanner />
       <View className="w-full max-w-[560px] flex-1 self-center">
-      {header ?? (title || back || action ? <ScreenHeader title={title} description={description} back={back} action={action} /> : null)}
+      {header ?? (title || back || action ? <ScreenHeader title={title} description={description} back={back} menu={menu} action={action} /> : null)}
       {scroll ? (
         <ScrollView className="flex-1" contentContainerClassName={content} keyboardShouldPersistTaps="handled">{children}</ScrollView>
       ) : (
@@ -56,7 +59,7 @@ export function Screen({ title, description, back = false, action, header, foote
   );
 }
 
-export function ScreenHeader({ title, description, back, action }: Pick<ScreenProps, 'title' | 'description' | 'back' | 'action'>) {
+export function ScreenHeader({ title, description, back, menu, action }: Pick<ScreenProps, 'title' | 'description' | 'back' | 'menu' | 'action'>) {
   if (back) {
     return (
       <View className="h-14 flex-row items-center gap-1 px-2">
@@ -70,6 +73,7 @@ export function ScreenHeader({ title, description, back, action }: Pick<ScreenPr
   }
   return (
     <View className="min-h-14 flex-row items-center justify-between gap-3 px-5 pb-2 pt-2">
+      {menu ? <MenuButton /> : null}
       <View className="flex-1 gap-0.5">
         {title ? <Text role="heading" className="text-2xl font-semibold tracking-tight">{title}</Text> : null}
         {description ? <Text className="text-muted-foreground text-sm">{description}</Text> : null}
