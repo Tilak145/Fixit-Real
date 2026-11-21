@@ -1,6 +1,7 @@
 import '../global.css';
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { PortalHost } from '@rn-primitives/portal';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -21,6 +22,15 @@ const query = new QueryClient();
 export default function Layout() {
   const [loaded, error] = useFonts({ Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold });
   useEffect(() => { if (loaded || error) void SplashScreen.hideAsync(); }, [loaded, error]);
+  // Tapping a lead alert opens the business dashboard.
+  useEffect(() => {
+    try {
+      const sub = Notifications.addNotificationResponseReceivedListener(() => { router.push('/pro'); });
+      return () => sub.remove();
+    } catch {
+      return undefined;
+    }
+  }, []);
   if (!loaded && !error) return null;
   return <GestureHandlerRootView style={{ flex: 1 }}><QueryClientProvider client={query}>
     <DesignThemeProvider><PreviewProvider><AuthProvider><AppUpdateGate>

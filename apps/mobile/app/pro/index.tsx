@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, CalendarClock, ChevronRight, Receipt } from 'lucide-react-native';
 import { CoverageEditor } from '@/components/fixit/coverage-editor';
+import { PhoneAlerts } from '@/components/fixit/phone-alerts';
 import { HoursEditor } from '@/components/fixit/hours-editor';
 import { JobDetails } from '@/components/fixit/job-details';
 import { Screen, Section } from '@/components/screen';
@@ -231,6 +232,7 @@ function BusinessDashboard() {
 
   return (
     <>
+      <PhoneAlerts userId={userId} />
       <WorkSwitch userId={userId} />
       <HoursEditor userId={userId} />
       <CoverageEditor providerId={pro.id} plan={pro.plan} />

@@ -21,6 +21,7 @@
     },
     "plugins": [
       "expo-router",
+      ["expo-notifications", { "defaultChannel": "leads" }],
       [
         "expo-image-picker",
         {
