@@ -43,6 +43,7 @@ export function Screen({ title, description, back = false, action, header, foote
   return (
     <SafeAreaView edges={edges ?? ['top', 'bottom']} className="bg-background flex-1">
       <TestingBanner />
+      <View className="w-full max-w-[560px] flex-1 self-center">
       {header ?? (title || back || action ? <ScreenHeader title={title} description={description} back={back} action={action} /> : null)}
       {scroll ? (
         <ScrollView className="flex-1" contentContainerClassName={content} keyboardShouldPersistTaps="handled">{children}</ScrollView>
@@ -50,6 +51,7 @@ export function Screen({ title, description, back = false, action, header, foote
         <View className={cn('flex-1', content)}>{children}</View>
       )}
       {footer ? <View className="border-border bg-background border-t px-5 pb-2 pt-3">{footer}</View> : null}
+      </View>
     </SafeAreaView>
   );
 }

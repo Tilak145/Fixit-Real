@@ -114,13 +114,12 @@ export default function HomePage({ edges }: { edges?: Edge[] }) {
       </View>
       {/* Services */}
       <Section title="Popular home services">
-        <View className="flex-row flex-wrap gap-3">
+        <View className="flex-row flex-wrap justify-between gap-y-2.5">
           {CORE_CATEGORIES.map(category => (
             <ServiceTile
               key={category.slug}
               slug={category.slug}
               name={category.name}
-              width={tileWidth}
               detail={detailFor(category.slug)}
               city={city}
             />
