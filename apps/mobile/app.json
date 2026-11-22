@@ -6,6 +6,11 @@
     "scheme": "fixit",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.fixitls.app",
+      "supportsTablet": false,
+      "buildNumber": "1"
+    },
     "android": {
       "package": "com.fixitls.app",
       "versionCode": 1,
