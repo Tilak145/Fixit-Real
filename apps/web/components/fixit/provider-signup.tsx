@@ -124,7 +124,7 @@ export function ProviderSignUpForm({
   compact = false,
   onJoined,
 }: { compact?: boolean; onJoined?: () => void } = {}) {
-  const { signUp, status } = useAuth();
+  const { signUp, status, user } = useAuth();
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,6 +170,55 @@ export function ProviderSignUpForm({
     router.push("/pro/onboarding");
   }
 
+  // Someone already signed in (a customer who now has a business, say) adds the
+  // business to the account they have: asking for a new one would only fail.
+  if (status === "authenticated" && !confirmationEmail && !pending) {
+    const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+    const who = typeof meta.full_name === "string" && meta.full_name.trim() ? meta.full_name.trim() : user?.email;
+    const card = (
+      <div data-testid="pro-signup-signed-in">
+        <h2 id="join-pro" className="pr-8 font-display text-[22px] font-semibold text-secondary">
+          Add your business
+        </h2>
+        <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+          You are signed in as <strong className="text-secondary">{who}</strong>. Your business is added to this
+          same account, so you keep your requests and customer number.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            onJoined?.();
+            router.push("/pro/onboarding");
+          }}
+          className="mt-5 h-11 w-full rounded-md bg-accent font-display text-[15px] font-semibold text-accent-foreground hover:bg-accent/90"
+        >
+          Set up my business →
+        </button>
+      </div>
+    );
+    if (compact) return card;
+    return (
+      <div className="min-h-screen bg-[#F5F7FA]">
+        <div className="mx-auto max-w-[1120px] px-6 py-6">
+          <FixItLogo />
+        </div>
+        <div className="mx-auto max-w-[480px] px-6 pb-16">
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">{card}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const logInInstead = error?.includes("already has a FixIt account") ? (
+    <Link
+      href="/login?next=/pro/onboarding"
+      onClick={onJoined}
+      className="mt-3 block text-center text-[14px] font-bold text-primary underline"
+    >
+      Log in and add your business →
+    </Link>
+  ) : null;
+
   if (compact) {
     return confirmationEmail ? (
       <div>
@@ -205,6 +254,7 @@ export function ProviderSignUpForm({
           status={status}
           onSubmit={onSubmit}
         />
+        {logInInstead}
       </div>
     );
   }
@@ -280,6 +330,7 @@ export function ProviderSignUpForm({
                 status={status}
                 onSubmit={onSubmit}
               />
+              {logInInstead}
               <p className="mt-4 text-center text-[13px] text-muted-foreground">
                 Already have an account?{" "}
                 <Link href="/login" className="font-bold text-primary hover:underline">
