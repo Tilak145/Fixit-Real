@@ -47,7 +47,7 @@ export const PLANS: Plan[] = [
   {
     key: "starter",
     label: "Starter",
-    price: 99,
+    price: 1,
     tagline: "Get found by local customers.",
     features: [
       "Unlimited lead access in 1 city",
@@ -60,7 +60,7 @@ export const PLANS: Plan[] = [
   {
     key: "professional",
     label: "Professional",
-    price: 199,
+    price: 2,
     tagline: "See jobs first and stand out in search.",
     recommended: true,
     features: [
@@ -75,7 +75,7 @@ export const PLANS: Plan[] = [
   {
     key: "business",
     label: "Business",
-    price: 399,
+    price: 3,
     tagline: "For teams that want the top of the page.",
     features: [
       "Everything in Professional",
