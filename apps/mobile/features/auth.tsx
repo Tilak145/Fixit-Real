@@ -95,6 +95,10 @@ export function AccountGate({ children, initialMode = 'login' }: { children: Rea
         message = 'Email requested. Use the most recent code or link.';
       } else if (mode === 'register') {
         const signup = await auth.signUp({ email, password, options: { emailRedirectTo: authRedirect() } }); result = signup;
+        // An existing account gets no email, so do not send the person to wait for one.
+        if (!signup.error && !signup.data.session && signup.data.user && (signup.data.user.identities?.length ?? 0) === 0) {
+          throw new Error('This email already has a FixIt account, so no new email was sent. Log in instead, or use Forgot password.');
+        }
         if (!signup.data.session) nextCode = true;
         message = 'Check your email to finish signing up.';
       } else if (mode === 'code') {

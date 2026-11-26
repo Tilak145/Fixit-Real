@@ -142,7 +142,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
             },
           },
         });
-        return error ? failed(error) : { ok: true, needsEmailConfirmation: !data.session };
+        if (error) return failed(error);
+        // An email that already has an account gets a normal-looking answer with
+        // no identities, and no email is sent. Say so, or the person waits for
+        // a code that will never arrive.
+        if (!data.session && data.user && (data.user.identities?.length ?? 0) === 0) {
+          return {
+            ok: false,
+            message:
+              "This email already has a FixIt account, so no new email was sent. Log in instead, or use Forgot password.",
+          };
+        }
+        return { ok: true, needsEmailConfirmation: !data.session };
       } catch (error) {
         return failed(error);
       }
