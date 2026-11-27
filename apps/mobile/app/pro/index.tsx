@@ -183,8 +183,10 @@ function BusinessDashboard() {
     queryKey: ['my-business', userId],
     queryFn: () => getMyBusiness(userId),
     enabled: userId !== '',
+    // While in review, look again every few seconds so the dashboard opens by itself.
+    refetchInterval: query => (query.state.data && query.state.data.status !== 'approved' ? 5_000 : false),
   });
-  const enabled = !!business.data;
+  const enabled = business.data?.status === 'approved';
   const leads = useQuery({ queryKey: ['business-leads', business.data?.id], queryFn: listBusinessLeads, enabled });
   const appointments = useQuery({
     queryKey: ['business-appointments', business.data?.id],
@@ -220,6 +222,30 @@ function BusinessDashboard() {
   }
 
   const pro: MyBusiness = business.data;
+  // No dashboard until FixIt has approved the business.
+  if (pro.status !== 'approved') {
+    const rejected = pro.status === 'rejected';
+    return (
+      <>
+        <AdminNotices providerId={pro.id} />
+        <Card className="gap-3 py-6">
+          <CardContent className="gap-2 px-5">
+            <Text className="text-base font-semibold">
+              {rejected ? 'Your business was not approved' : 'Your business is in review'}
+            </Text>
+            <Text className="text-muted-foreground text-[13px] leading-5">
+              {rejected
+                ? 'Your dashboard stays closed. Contact FixIt support to find out what is needed.'
+                : 'Your dashboard opens once FixIt approves your business. We will tell you here and by email.'}
+            </Text>
+            <Button variant="outline" onPress={() => void Linking.openURL(config.siteUrl + '/pro/onboarding')}>
+              <Text>Check or update my details</Text>
+            </Button>
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
   const loading = leads.isPending || appointments.isPending;
   if (loading) return <Skeleton className="h-40 w-full rounded-2xl" />;
 

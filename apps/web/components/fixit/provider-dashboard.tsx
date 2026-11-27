@@ -34,6 +34,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { ReviewScreen } from "@/components/fixit/review-screen";
 import { AdminNotices } from "@/components/fixit/admin-notices";
 import { SITE_EMAIL } from "@/lib/site-contact";
 import { getSupabase, requireSupabase } from "@/lib/supabase";
@@ -1074,6 +1075,18 @@ export function ProviderDashboard() {
           </button>
         </div>
       </div>
+    );
+  }
+
+  // No dashboard until FixIt has approved the business.
+  if (provider.data.status !== "approved") {
+    return (
+      <ReviewScreen
+        providerId={provider.data.id}
+        businessName={provider.data.business_name}
+        status={provider.data.status}
+        onSignOut={() => void signOut()}
+      />
     );
   }
 
