@@ -36,6 +36,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { leadsForBusiness } from "@/lib/business-leads";
 import { ReviewScreen } from "@/components/fixit/review-screen";
+import { UpcomingVisit } from "@/components/fixit/upcoming-visit";
 import { AdminNotices } from "@/components/fixit/admin-notices";
 import { SITE_EMAIL } from "@/lib/site-contact";
 import { getSupabase, requireSupabase } from "@/lib/supabase";
@@ -1701,6 +1702,13 @@ export function ProviderDashboard() {
               </button>
             ))}
           </div>
+
+          {/* A booked visit is shown first, so it is never something to go looking for. */}
+          {provider.data ? (
+            <div className="mb-5 overflow-hidden rounded-xl">
+              <UpcomingVisit providerId={provider.data.id} onView={() => setSection("jobs")} />
+            </div>
+          ) : null}
 
           {/* What FixIt decided about this business: license, insurance and so on. */}
           {provider.data ? <AdminNotices providerId={provider.data.id} /> : null}

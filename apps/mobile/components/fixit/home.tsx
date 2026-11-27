@@ -16,6 +16,7 @@ import { Icon } from '@/components/ui/icon';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { MenuButton } from '@/components/fixit/side-menu';
+import { UpcomingVisit } from '@/components/fixit/upcoming-visit';
 import { CityPicker } from '@/components/fixit/city-picker';
 import { CORE_CATEGORIES, listCategoryProCounts, listPros } from '@/lib/fixit';
 import { featuredSeed, pickFeatured } from '@/lib/featured-pros';
@@ -88,6 +89,8 @@ export default function HomePage({ edges }: { edges?: Edge[] }) {
           <CityPicker city={city} options={options} onChange={choose} />
         </View>
       }>
+      <UpcomingVisit />
+
       {/* Hero */}
       <View className="bg-primary overflow-hidden rounded-[28px] p-6">
         <View className="absolute -right-10 -top-12 size-44 rounded-full bg-white/10" />

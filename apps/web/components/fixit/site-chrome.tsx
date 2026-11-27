@@ -1,5 +1,6 @@
 "use client";
 
+import { UpcomingVisit } from "@/components/fixit/upcoming-visit";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -364,6 +365,7 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
         </Link>
       ) : null}
       <ProWindow mode={proWindow} onClose={() => setProWindow(null)} />
+      <UpcomingVisit />
     </header>
     </>
   );
