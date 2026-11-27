@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
-import { AdminNotices } from "@/components/fixit/admin-notices";
+import { NotificationBell } from "@/components/fixit/notification-bell";
 import { SITE_EMAIL } from "@/lib/site-contact";
 
 /**
@@ -12,12 +12,10 @@ import { SITE_EMAIL } from "@/lib/site-contact";
  * every few seconds, so the dashboard opens by itself once they are approved.
  */
 export function ReviewScreen({
-  providerId,
   businessName,
   status,
   onSignOut,
 }: {
-  providerId: string;
   businessName: string;
   status: string;
   onSignOut: () => void;
@@ -34,7 +32,9 @@ export function ReviewScreen({
   return (
     <div className="min-h-screen bg-background px-4 py-10" data-testid="pro-review-screen">
       <div className="mx-auto max-w-[560px]">
-        <AdminNotices providerId={providerId} />
+        <div className="mb-3 flex justify-end">
+          <NotificationBell home="/pro/dashboard" />
+        </div>
         <div className="rounded-2xl border border-border bg-card p-8 text-center">
           <p className="text-[12px] font-bold uppercase tracking-wide text-muted-foreground">{businessName}</p>
           <h1 className="mt-2 font-display text-2xl font-semibold">

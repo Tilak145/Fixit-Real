@@ -110,7 +110,15 @@ export function NotificationBell({
       title: notice.title,
       body: notice.body,
       count: 1,
-      onOpen: go,
+      // Reading it here is what clears it: there is no separate box to close.
+      onOpen: () => {
+        void getSupabase()
+          ?.from("provider_notices")
+          .update({ read_at: new Date().toISOString() })
+          .eq("id", notice.id)
+          .then(() => notices.refetch());
+        go();
+      },
     })),
     ...extra,
   ];

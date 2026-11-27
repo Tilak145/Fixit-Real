@@ -38,7 +38,6 @@ import { leadsForBusiness } from "@/lib/business-leads";
 import { ReviewScreen } from "@/components/fixit/review-screen";
 import { UpcomingVisit } from "@/components/fixit/upcoming-visit";
 import { NotificationBell } from "@/components/fixit/notification-bell";
-import { AdminNotices } from "@/components/fixit/admin-notices";
 import { SITE_EMAIL } from "@/lib/site-contact";
 import { getSupabase, requireSupabase } from "@/lib/supabase";
 import { currentPrice } from "@/lib/payments-price";
@@ -1103,7 +1102,6 @@ export function ProviderDashboard() {
   if (provider.data.status !== "approved") {
     return (
       <ReviewScreen
-        providerId={provider.data.id}
         businessName={provider.data.business_name}
         status={provider.data.status}
         onSignOut={() => void signOut()}
@@ -1621,7 +1619,10 @@ export function ProviderDashboard() {
                       ? `${formatCents(news.amount_cents)} · Reason: ${news.decline_reason}`
                       : formatCents(news.amount_cents),
                   count: 1,
-                  onOpen: () => setSection("leads"),
+                  onOpen: () => {
+                    dismissNews.mutate();
+                    setSection("leads");
+                  },
                 })),
                 ...(stats.newLeads > 0
                   ? [
@@ -1741,69 +1742,6 @@ export function ProviderDashboard() {
               >
                 Choose a plan
               </button>
-            </div>
-          ) : null}
-
-          {/* What FixIt decided about this business: license, insurance and so on. */}
-          {provider.data ? <AdminNotices providerId={provider.data.id} /> : null}
-
-          {/* A customer answered one of your prices, or wrote to you. */}
-          {(responseNews.data ?? []).length > 0 || unread.total > 0 ? (
-            <div className="mb-5 space-y-2" data-testid="pro-notices">
-              {(responseNews.data ?? []).map((news) => (
-                <div
-                  key={news.quote_id}
-                  className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3 text-[13.5px] font-semibold ${
-                    news.status === "accepted"
-                      ? "border-[#BFE3CB] bg-[#E6F4EA] text-[#1E6B38]"
-                      : "border-border bg-muted text-foreground/80"
-                  }`}
-                >
-                  <span className="min-w-0 flex-1">
-                    {news.status === "accepted" ? "🎉 " : ""}
-                    {news.customer_name ?? "A customer"} {news.status === "accepted" ? "accepted" : "declined"} your{" "}
-                    {formatCents(news.amount_cents)} quote
-                    {news.status === "accepted" ? ". Their contact details are now in your leads." : "."}
-                    {news.status === "declined" && news.decline_reason ? (
-                      <span className="mt-0.5 block font-normal" data-testid="news-decline-reason">
-                        Reason: “{news.decline_reason}”
-                      </span>
-                    ) : null}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSection("leads")}
-                    className="rounded-full bg-white/70 px-3 py-1 text-[12.5px] font-bold text-primary hover:bg-white"
-                  >
-                    View
-                  </button>
-                </div>
-              ))}
-              {(responseNews.data ?? []).length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => dismissNews.mutate()}
-                  disabled={dismissNews.isPending}
-                  className="text-[12.5px] font-bold text-muted-foreground hover:text-foreground"
-                >
-                  Dismiss
-                </button>
-              ) : null}
-              {unread.total > 0 && section !== "messages" ? (
-                <button
-                  type="button"
-                  onClick={() => setSection("messages")}
-                  className="flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-[#E9F1FB] px-4 py-3 text-left text-[13.5px] font-semibold text-primary"
-                >
-                  <MessageSquare className="h-4 w-4 flex-none" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">
-                    {unread.total === 1 && unread.latest
-                      ? `New message from your customer: “${unread.latest.last_body.slice(0, 70)}”`
-                      : `You have ${unread.total} new messages`}
-                  </span>
-                  <span className="flex-none">Read →</span>
-                </button>
-              ) : null}
             </div>
           ) : null}
 
