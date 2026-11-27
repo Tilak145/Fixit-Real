@@ -262,7 +262,7 @@ function LeadDetail() {
   });
   const leads = useQuery({
     queryKey: ['business-leads', business.data?.id],
-    queryFn: listBusinessLeads,
+    queryFn: () => listBusinessLeads(business.data!.id),
     enabled: !!business.data,
   });
   // Set when a price goes out but the customer has already chosen someone

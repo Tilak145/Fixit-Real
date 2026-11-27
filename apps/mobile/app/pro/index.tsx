@@ -187,7 +187,7 @@ function BusinessDashboard() {
     refetchInterval: query => (query.state.data && query.state.data.status !== 'approved' ? 5_000 : false),
   });
   const enabled = business.data?.status === 'approved';
-  const leads = useQuery({ queryKey: ['business-leads', business.data?.id], queryFn: listBusinessLeads, enabled });
+  const leads = useQuery({ queryKey: ['business-leads', business.data?.id], queryFn: () => listBusinessLeads(business.data!.id), enabled });
   const appointments = useQuery({
     queryKey: ['business-appointments', business.data?.id],
     queryFn: listBusinessAppointments,

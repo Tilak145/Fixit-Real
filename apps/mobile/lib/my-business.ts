@@ -1,4 +1,5 @@
 import { getSupabase } from '@/lib/supabase';
+import { leadsForBusiness } from '@/lib/business-leads';
 import type { ProviderAvailability } from '@/lib/fixit-availability';
 import { QUOTE_FIELDS, getRequestMedia, type Appointment, type JobQuote, type RequestMedia } from '@/lib/fixit';
 
@@ -173,10 +174,11 @@ export interface BusinessLead {
 }
 
 /**
- * The requests visible to this business, emergencies first. The database only
- * returns leads in the business's trades, so no filtering happens here.
+ * This business's requests, emergencies first: its own services and cities, and
+ * jobs it took. An account that is also staff can read every request, so they are
+ * filtered here too.
  */
-export async function listBusinessLeads(): Promise<BusinessLead[]> {
+export async function listBusinessLeads(providerId: string): Promise<BusinessLead[]> {
   const supabase = getSupabase();
   if (!supabase) return [];
   const { data, error } = await supabase
@@ -186,9 +188,13 @@ export async function listBusinessLeads(): Promise<BusinessLead[]> {
     )
     .order('is_emergency', { ascending: false })
     .order('created_at', { ascending: false })
-    .limit(50);
+    .limit(500);
   if (error) throw new Error(error.message);
-  const rows = (data ?? []) as Array<Omit<BusinessLead, 'quote' | 'media' | 'contact'>>;
+  const covered = await getMyCoverage(providerId);
+  const rows = leadsForBusiness((data ?? []) as Array<Omit<BusinessLead, 'quote' | 'media' | 'contact'>>, {
+    id: providerId,
+    ...covered,
+  }).slice(0, 50);
   if (rows.length === 0) return [];
   const { data: quotes } = await supabase
     .from('quotes')

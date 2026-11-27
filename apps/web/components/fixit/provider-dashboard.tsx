@@ -34,6 +34,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { leadsForBusiness } from "@/lib/business-leads";
 import { ReviewScreen } from "@/components/fixit/review-screen";
 import { AdminNotices } from "@/components/fixit/admin-notices";
 import { SITE_EMAIL } from "@/lib/site-contact";
@@ -652,9 +653,21 @@ export function ProviderDashboard() {
         // pro should answer before anything else on the list.
         .order("is_emergency", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(500);
       if (error) throw new Error(error.message);
-      const rows = (data ?? []) as Lead[];
+      // Only this business's services and cities: an account that is also staff can
+      // read every request, and its business must not be shown them all.
+      const [mine, covered] = await Promise.all([
+        supabase.from("provider_services").select("category_slug").eq("provider_id", provider.data!.id),
+        supabase.from("provider_service_areas").select("city").eq("provider_id", provider.data!.id),
+      ]);
+      if (mine.error) throw new Error(mine.error.message);
+      if (covered.error) throw new Error(covered.error.message);
+      const rows = leadsForBusiness((data ?? []) as Lead[], {
+        id: provider.data!.id,
+        services: (mine.data ?? []).map((s) => s.category_slug as string),
+        cities: (covered.data ?? []).map((a) => a.city as string),
+      }).slice(0, 50);
       // Contact details arrive as a separate list: the database only returns
       // the rows this professional may see, which is the lead they accepted.
       const { data: contacts } = await supabase
