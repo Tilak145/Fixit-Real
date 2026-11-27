@@ -1,6 +1,7 @@
 "use client";
 
 import { UpcomingVisit } from "@/components/fixit/upcoming-visit";
+import { NotificationBell } from "@/components/fixit/notification-bell";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -298,6 +299,7 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
                   ) : null}
                 </Link>
               )}
+              <NotificationBell customer={!isPro} home={isPro ? "/pro/dashboard" : "/account"} />
               {/* Signed in, the primary button is the way out. Offering "Join"
                   to someone who already has an account reads as a bug. */}
               <button

@@ -37,6 +37,7 @@ import { useAuth } from "@/lib/auth-context";
 import { leadsForBusiness } from "@/lib/business-leads";
 import { ReviewScreen } from "@/components/fixit/review-screen";
 import { UpcomingVisit } from "@/components/fixit/upcoming-visit";
+import { NotificationBell } from "@/components/fixit/notification-bell";
 import { AdminNotices } from "@/components/fixit/admin-notices";
 import { SITE_EMAIL } from "@/lib/site-contact";
 import { getSupabase, requireSupabase } from "@/lib/supabase";
@@ -1607,19 +1608,35 @@ export function ProviderDashboard() {
             <MapPinned className="h-4 w-4 text-accent" aria-hidden="true" />
             {areas.data?.[0] ?? "Akron, OH"}
           </span>
-          <button
-            type="button"
-            aria-label={`Notifications (${stats.newLeads} new)`}
-            onClick={() => setSection("leads")}
-            className="relative ml-auto hidden h-10 w-10 items-center justify-center rounded-full border border-border text-foreground/70 hover:border-primary hover:text-primary sm:flex md:ml-0"
-          >
-            <Bell className="h-[18px] w-[18px]" aria-hidden="true" />
-            {stats.newLeads > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#E4574C] px-1 text-[11px] font-bold text-white">
-                {stats.newLeads}
-              </span>
-            )}
-          </button>
+          <span className="ml-auto md:ml-0">
+            <NotificationBell
+              home="/pro/dashboard"
+              onOpenMessages={() => setSection("messages")}
+              extra={[
+                ...(responseNews.data ?? []).map((news) => ({
+                  key: `quote-${news.quote_id}`,
+                  title: `${news.customer_name ?? "A customer"} ${news.status === "accepted" ? "accepted" : "declined"} your quote`,
+                  body:
+                    news.status === "declined" && news.decline_reason
+                      ? `${formatCents(news.amount_cents)} · Reason: ${news.decline_reason}`
+                      : formatCents(news.amount_cents),
+                  count: 1,
+                  onOpen: () => setSection("leads"),
+                })),
+                ...(stats.newLeads > 0
+                  ? [
+                      {
+                        key: "leads",
+                        title: stats.newLeads === 1 ? "1 new lead" : `${stats.newLeads} new leads`,
+                        body: "Open your leads and send your price.",
+                        count: stats.newLeads,
+                        onOpen: () => setSection("leads"),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </span>
           <span className="flex items-center gap-2.5">
             <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold text-white">
               {pro.logo_url ? (
