@@ -126,6 +126,56 @@ export function OnboardingWizard() {
   });
 
   const set = (patch: Partial<WizardData>) => setData((d) => ({ ...d, ...patch }));
+  // The plan an existing business is on, once loaded; null for a new one.
+  const [currentPlan, setCurrentPlan] = useState<string | null>(null);
+  // A paid plan is changed from the dashboard (through billing), never here.
+  const onPaidPlan = currentPlan !== null && currentPlan !== "founding";
+
+  // Someone who already has a business sees what is saved, not blank defaults:
+  // otherwise saving this form would overwrite their services, cities and plan.
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    void (async () => {
+      const supabase = requireSupabase();
+      const { data: saved } = await supabase
+        .from("providers")
+        .select(
+          "id,business_name,phone,email,website,address,description,years_in_business,employees,plan,business_registration_number,logo_url",
+        )
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+      if (!saved || !active) return;
+      const [services, areas] = await Promise.all([
+        supabase.from("provider_services").select("category_slug").eq("provider_id", saved.id),
+        supabase.from("provider_service_areas").select("city").eq("provider_id", saved.id),
+      ]);
+      // The licence number is private to its owner and staff, so it is read separately.
+      const { data: licence } = await supabase.from("providers").select("license_number").eq("id", saved.id).maybeSingle();
+      if (!active) return;
+      setCurrentPlan(saved.plan);
+      setData((d) => ({
+        ...d,
+        businessName: saved.business_name ?? d.businessName,
+        phone: saved.phone ?? d.phone,
+        email: saved.email ?? d.email,
+        website: saved.website ?? "",
+        address: saved.address ?? "",
+        description: saved.description ?? "",
+        years: saved.years_in_business ?? d.years,
+        employees: saved.employees ?? d.employees,
+        plan: saved.plan as WizardData["plan"],
+        licenseNumber: licence?.license_number ?? d.licenseNumber,
+        businessRegistration: saved.business_registration_number ?? "",
+        logoUrl: saved.logo_url ?? "",
+        services: services.data?.map((row) => row.category_slug as string) ?? d.services,
+        cities: areas.data?.map((row) => row.city as string) ?? d.cities,
+      }));
+    })();
+    return () => {
+      active = false;
+    };
+  }, [user]);
   // The cities the owner has added. A pro picks a state, then one of the cities
   // FixIt serves there: nothing is typed, so a service area is always a city a
   // customer can actually choose, spelled the same way.
@@ -298,8 +348,6 @@ export function OnboardingWizard() {
       description: data.description,
       years_in_business: data.years,
       employees: data.employees,
-      status: "pending" as const,
-      plan: chosenPlan,
       license_number: data.licenseNumber.trim() || null,
       business_registration_number: data.businessRegistration.trim() || null,
       logo_url: data.logoUrl || null,
@@ -311,7 +359,11 @@ export function OnboardingWizard() {
     };
     let providerId = existing?.id;
     if (providerId) {
-      const { error: upErr } = await supabase.from("providers").update(values).eq("id", providerId);
+      // Editing keeps the approval as it is, and never changes a paid plan.
+      const { error: upErr } = await supabase
+        .from("providers")
+        .update(onPaidPlan ? values : { ...values, plan: chosenPlan })
+        .eq("id", providerId);
       if (upErr) {
         setError(upErr.message);
         setSaving(false);
@@ -320,7 +372,7 @@ export function OnboardingWizard() {
     } else {
       const { data: inserted, error: inErr } = await supabase
         .from("providers")
-        .insert(values)
+        .insert({ ...values, status: "pending" as const, plan: chosenPlan })
         .select("id")
         .single();
       if (inErr || !inserted) {
@@ -825,6 +877,17 @@ export function OnboardingWizard() {
                 </select>
               </label>
             </div>
+            {onPaidPlan ? (
+              <div className="mt-6 rounded-xl border-2 border-accent p-4" data-testid="current-plan">
+                <strong className="block font-display text-base font-semibold">
+                  You are on the {PAID_PLANS.find((p) => p.key === currentPlan)?.label ?? currentPlan} plan
+                </strong>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                  To change or cancel it, open Payments &amp; Plan on your dashboard.
+                </p>
+              </div>
+            ) : (
+              <>
             <h3 className="mb-1 mt-6 font-display text-[18px] font-semibold">Choose your plan</h3>
             <p className="mb-3 text-[12.5px] text-muted-foreground">
               Unlimited lead access in your area, plus the placement and tools to win the work.
@@ -917,6 +980,8 @@ export function OnboardingWizard() {
                 );
               })}
             </div>
+              </>
+            )}
             {error && (
               <p role="alert" className="mt-4 rounded-md bg-[#FDECEA] px-4 py-3 text-sm text-[#D93025]">
                 {error}
