@@ -619,6 +619,9 @@ export function ProviderDashboard() {
   const provider = useQuery({
     queryKey: ["my-provider", user?.id],
     enabled: !!user,
+    // The plan is changed by Stripe's messages, not by this page, so look again
+    // every few seconds: a payment shows up without the pro refreshing.
+    refetchInterval: 10_000,
     queryFn: async (): Promise<ProviderRow | null> => {
       const supabase = requireSupabase();
       const { data, error } = await supabase
@@ -827,6 +830,7 @@ export function ProviderDashboard() {
     queryFn: getMyPaymentState,
     retry: false,
     staleTime: 30_000,
+    refetchInterval: 30_000,
   });
 
   const products = useQuery({
