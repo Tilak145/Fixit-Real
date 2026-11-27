@@ -90,6 +90,8 @@ interface ProviderRow {
   business_registration_status?: string | null;
   /** When the free founding period ends, if they are on one. */
   trial_ends_at?: string | null;
+  /** Set when their subscription ended; paid benefits are off until they pay again. */
+  billing_lapsed_at?: string | null;
   /** Permanent FixIt business number, nine digits. Given once, never changed. */
   pro_number?: number | string | null;
   /** The shop's point, set when the address is picked. Drives dispatch distance. */
@@ -628,7 +630,7 @@ export function ProviderDashboard() {
       const { data, error } = await supabase
         .from("providers")
         .select(
-          "id,business_name,email,phone,website,address,description,status,plan,rating,review_count,logo_url,years_in_business,employees,business_registration_number,business_registration_status,trial_ends_at,lat,lng,pro_number",
+          "id,business_name,email,phone,website,address,description,status,plan,rating,review_count,logo_url,years_in_business,employees,business_registration_number,business_registration_status,trial_ends_at,billing_lapsed_at,lat,lng,pro_number",
         )
         .eq("auth_user_id", user!.id)
         .maybeSingle();
@@ -1710,6 +1712,21 @@ export function ProviderDashboard() {
             </div>
           ) : null}
 
+          {provider.data?.billing_lapsed_at && section !== "plan" ? (
+            <div role="alert" className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-[#E8A0A0] bg-[#FDECEA] px-4 py-3">
+              <span className="min-w-0 flex-1 text-[14px] font-bold text-[#8A1F11]">
+                Your subscription has ended. You are not getting new leads.
+              </span>
+              <button
+                type="button"
+                onClick={() => setSection("plan")}
+                className="rounded-md bg-accent px-4 py-2 text-[13px] font-bold text-accent-foreground"
+              >
+                Choose a plan
+              </button>
+            </div>
+          ) : null}
+
           {/* What FixIt decided about this business: license, insurance and so on. */}
           {provider.data ? <AdminNotices providerId={provider.data.id} /> : null}
 
@@ -2658,6 +2675,11 @@ export function ProviderDashboard() {
               <Panel title="Subscription Plan">
                 {paymentState.isLoading ? (
                   <p className="text-sm text-muted-foreground">Checking billing…</p>
+                ) : pro.billing_lapsed_at ? (
+                  <p role="alert" className="text-sm font-bold text-[#B3261E]">
+                    Your subscription has ended, so you are not getting new leads. Choose a plan below to switch them
+                    back on.
+                  </p>
                 ) : (paymentState.data as MyPaymentState | undefined)?.subscriptions?.length ? (
                   <div className="space-y-3">
                     <p className="text-sm text-muted-foreground">
@@ -2684,7 +2706,7 @@ export function ProviderDashboard() {
                     who has moved to a paid plan, or has had their free month, has no
                     use for a card that says "Free — no billing". */}
                 {PLAN_ORDER.filter((plan) => plan !== "founding" || pro.plan === "founding").map((plan) => {
-                  const on = pro.plan === plan;
+                  const on = pro.plan === plan && !pro.billing_lapsed_at;
                   const info = planByKey(plan);
                   // The free founding tier has no price to check out with.
                   const priceId = info && info.price > 0 ? priceByPlan[plan] : undefined;

@@ -14,6 +14,8 @@ export interface MyBusiness {
   pro_number: string | number | null;
   /** 'pending' while in review, 'approved' or 'rejected'. */
   status: string;
+  /** Set when their subscription ended. */
+  billing_lapsed_at?: string | null;
 }
 
 /** The signed-in person's own shop, or null when this login is not a business. */
@@ -22,7 +24,7 @@ export async function getMyBusiness(userId: string): Promise<MyBusiness | null> 
   if (!supabase) return null;
   const { data, error } = await supabase
     .from('providers')
-    .select('id,business_name,plan,rating,review_count,logo_url,pro_number,status')
+    .select('id,business_name,plan,rating,review_count,logo_url,pro_number,status,billing_lapsed_at')
     .eq('auth_user_id', userId)
     .maybeSingle();
   if (error) throw new Error(error.message);

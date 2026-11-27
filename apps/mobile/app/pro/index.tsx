@@ -260,6 +260,14 @@ function BusinessDashboard() {
 
   return (
     <>
+      {pro.billing_lapsed_at ? (
+        <View className="gap-2 rounded-2xl border border-[#E8A0A0] bg-[#FDECEA] p-4">
+          <Text className="text-[14px] font-bold text-[#8A1F11]">Your subscription has ended. You are not getting new leads.</Text>
+          <Button variant="outline" onPress={() => void Linking.openURL(config.siteUrl + '/pro/dashboard')}>
+            <Text>Choose a plan on the website</Text>
+          </Button>
+        </View>
+      ) : null}
       <UpcomingVisit providerId={pro.id} />
       <AdminNotices providerId={pro.id} />
       <PhoneAlerts userId={userId} />
