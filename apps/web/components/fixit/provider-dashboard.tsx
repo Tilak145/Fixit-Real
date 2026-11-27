@@ -34,6 +34,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { AdminNotices } from "@/components/fixit/admin-notices";
 import { SITE_EMAIL } from "@/lib/site-contact";
 import { getSupabase, requireSupabase } from "@/lib/supabase";
 import { currentPrice } from "@/lib/payments-price";
@@ -1670,6 +1671,9 @@ export function ProviderDashboard() {
               </button>
             ))}
           </div>
+
+          {/* What FixIt decided about this business: license, insurance and so on. */}
+          {provider.data ? <AdminNotices providerId={provider.data.id} /> : null}
 
           {/* A customer answered one of your prices, or wrote to you. */}
           {(responseNews.data ?? []).length > 0 || unread.total > 0 ? (
