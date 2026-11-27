@@ -100,10 +100,8 @@ export function QuoteRequestForm({
   const { user } = useAuth();
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  // Set when a signed-out visitor tries to send: the form points at the
-  // account step instead of failing quietly.
-  const [needsAccount, setNeedsAccount] = useState(false);
-  const accountPromptRef = useRef<HTMLDivElement>(null);
+  // The customer number a visitor without an account is given when they send.
+  const [guestNumber, setGuestNumber] = useState<number | null>(null);
   const [uploadWarning, setUploadWarning] = useState<string | null>(null);
   // The live cost estimate: recomputed as the customer describes the job or
   // changes the service, so the figure always matches what they have entered.
@@ -295,17 +293,6 @@ export function QuoteRequestForm({
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // A request has to belong to someone: that is how the customer accepts a
-    // price, sees who they chose, and keeps contact details private until then.
-    // So a signed-out visitor is asked for an account instead of sending as a
-    // guest nobody can follow up with.
-    if (!user) {
-      setStatus("error");
-      setError(null);
-      setNeedsAccount(true);
-      window.requestAnimationFrame(() => accountPromptRef.current?.scrollIntoView({ block: "center" }));
-      return;
-    }
     const supabase = getSupabase();
     if (!supabase) {
       setStatus("error");
@@ -320,6 +307,41 @@ export function QuoteRequestForm({
     if (budgetProblem) {
       setStatus("error");
       setError(budgetProblem);
+      return;
+    }
+    // No account needed: a visitor's request is saved through one checked door
+    // and they get a customer number. Signing up later with the same email brings
+    // the request into their account.
+    if (!user) {
+      const slug = String(form.get("category_slug") ?? "plumbing");
+      const { data: number, error: guestError } = await supabase.rpc("submit_guest_request", {
+        p: {
+          category_slug: slug,
+          description: composeDescription(slug, answers, String(form.get("description") ?? "")),
+          customer_name: String(form.get("customer_name") ?? ""),
+          customer_email: String(form.get("customer_email") ?? ""),
+          customer_phone: String(form.get("customer_phone") ?? ""),
+          city: String(form.get("city") ?? ""),
+          customer_address: String(form.get("customer_address") ?? ""),
+          is_emergency: emergency,
+          lat: jobPoint?.lat ?? null,
+          lng: jobPoint?.lng ?? null,
+          budget_min_cents: budget.minCents,
+          budget_max_cents: budget.maxCents,
+        },
+      });
+      if (guestError || typeof number !== "number") {
+        setStatus("error");
+        setError(guestError?.message ?? "Your request could not be saved. Please try again.");
+        return;
+      }
+      setGuestNumber(number);
+      setStatus("done");
+      try {
+        window.localStorage.removeItem(JOB_DRAFT_KEY);
+      } catch {
+        // Nothing to clear if storage is unavailable.
+      }
       return;
     }
     const { data: created, error: insertError } = await supabase
@@ -378,6 +400,38 @@ export function QuoteRequestForm({
     } catch {
       // Nothing to clear if storage is unavailable.
     }
+  }
+
+  if (status === "done" && guestNumber !== null) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-8 text-center shadow-sm" data-testid="guest-sent">
+        <h2 className="mb-2 font-display text-2xl font-semibold">Your request is in!</h2>
+        <p className="text-sm text-muted-foreground">Professionals in your area can see it now.</p>
+        <div className="mx-auto my-5 max-w-[320px] rounded-xl border-2 border-dashed border-primary bg-muted/40 px-5 py-4">
+          <span className="block text-[11.5px] font-bold uppercase tracking-wide text-muted-foreground">
+            Your customer number
+          </span>
+          <strong className="block font-display text-[34px] font-bold tabular-nums">{guestNumber}</strong>
+          <span className="block text-[12px] text-muted-foreground">Write it down or take a screenshot.</span>
+        </div>
+        <p className="mx-auto mb-5 max-w-[420px] text-sm text-foreground/80">
+          To see your prices and choose a pro, create a free account with <strong>{prefill.email}</strong>. Your
+          request will be there, with the same number. You can do it later today or tomorrow.
+        </p>
+        <div className="flex flex-col items-center gap-2">
+          <Link
+            href="/register"
+            onClick={() => initial.onDone?.()}
+            className="flex h-12 w-full max-w-[320px] items-center justify-center rounded-md bg-accent text-sm font-bold text-accent-foreground hover:bg-accent/90"
+          >
+            Create my free account
+          </Link>
+          <Link href="/" onClick={() => initial.onDone?.()} className="text-sm font-bold text-primary hover:underline">
+            Later, back to home
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (status === "done") {
@@ -693,6 +747,7 @@ export function QuoteRequestForm({
           <input
             name="customer_phone"
             type="tel"
+            required={!user}
             value={prefill.phone}
             onChange={(event) => setPrefill((p) => ({ ...p, phone: event.target.value }))}
             className={inputClass}
@@ -709,32 +764,16 @@ export function QuoteRequestForm({
         disabled={status === "submitting"}
         className="mt-6 h-[50px] w-full rounded-md bg-accent font-display text-base font-semibold text-accent-foreground hover:bg-accent/90 disabled:opacity-60"
       >
-        {status === "submitting"
-          ? "Sending…"
-          : user
-            ? "Send Request"
-            : "Sign up to send your request"}
+        {status === "submitting" ? "Sending…" : "Send Request"}
       </button>
       {!user ? (
-        <div
-          ref={accountPromptRef}
-          className={`mt-3 rounded-lg border px-4 py-3 text-center text-[13px] leading-relaxed ${
-            needsAccount ? "border-accent bg-accent/10 text-foreground" : "border-border bg-muted/40 text-muted-foreground"
-          }`}
-        >
-          <p className="font-semibold text-foreground">
-            An account keeps your request, photos and quotes in one place.
-          </p>
-          <p className="mt-0.5">It also keeps your phone and address private until you accept a price.</p>
-          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-            <Link href="/register" className="font-bold text-primary hover:underline">
-              Create a free account
-            </Link>
-            <Link href="/login" className="font-bold text-primary hover:underline">
-              Already have one? Log in
-            </Link>
-          </div>
-        </div>
+        <p className="mt-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-center text-[13px] leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">No account needed to send.</strong> You get a customer number, and can sign
+          up later to see your prices.{" "}
+          <Link href="/login" className="font-bold text-primary hover:underline">
+            Already have an account? Log in
+          </Link>
+        </p>
       ) : null}
       <p className="mt-3 text-center text-xs text-muted-foreground">
         No obligation. Pros pay a flat monthly subscription, never per lead — quoting is always free
