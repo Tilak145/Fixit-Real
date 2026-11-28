@@ -88,7 +88,7 @@ export function Properties({ organization }: { organization: Organization }) {
             className="h-11 w-full bg-transparent text-[14px] outline-none"
           />
         </label>
-        <select aria-label="Property type" value={kind} onChange={(event) => setKind(event.target.value as PropertyKind | "all")} className={field + " w-auto"}>
+        <select aria-label="Property type" value={kind} onChange={(event) => setKind(event.target.value as PropertyKind | "all")} className={field.replace("mt-1 ", "").replace("w-full", "w-auto")}>
           <option value="all">All types</option>
           {PROPERTY_KINDS.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
@@ -297,8 +297,11 @@ function Units({
             placeholder="For example: Unit 1 or Upstairs"
             maxLength={40}
             value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            className={field + " mt-0 max-w-[280px]"}
+            onChange={(event) => {
+              setLabel(event.target.value);
+              add.reset();
+            }}
+            className={field.replace("mt-1 ", "") + " max-w-[280px]"}
           />
           <button type="submit" disabled={add.isPending || !label.trim()} className={primaryButton}>
             {add.isPending ? "Adding…" : "Add unit"}
