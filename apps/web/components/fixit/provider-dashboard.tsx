@@ -679,10 +679,12 @@ export function ProviderDashboard() {
       }).slice(0, 50);
       // Contact details arrive as a separate list: the database only returns
       // the rows this professional may see, which is the lead they accepted.
-      const { data: contacts } = await supabase
-        .from("quote_request_contacts")
-        .select("quote_request_id,customer_email,customer_phone,customer_address")
-        .eq("provider_id", provider.data!.id);
+      const { data: contacts } = rows.length
+        ? await supabase
+            .from("quote_request_contacts")
+            .select("quote_request_id,customer_email,customer_phone,customer_address")
+            .in("quote_request_id", rows.map((row) => row.id))
+        : { data: [] };
       const byRequest = new Map(
         (contacts ?? []).map((c) => [
           c.quote_request_id as string,
