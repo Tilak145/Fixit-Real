@@ -4,17 +4,20 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Building2, DoorOpen, DollarSign, FileClock, LayoutGrid, Menu, Wrench } from "lucide-react";
+import { AlertTriangle, Building2, DoorOpen, DollarSign, FileClock, LayoutGrid, Menu, Plus, Wrench } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { repairFigures, type Organization, type OrganizationKind } from "@/lib/manage-model";
 import { createOrganization, getMyOrganization, listProperties, listRepairSummaries, listUnits } from "@/components/manage/data";
 import { Properties } from "@/components/manage/properties";
+import { Repairs } from "@/components/manage/repairs";
+import { NotificationBell } from "@/components/fixit/notification-bell";
 import { Card, ErrorState, field, Loading, primaryButton } from "@/components/manage/ui";
 
 // Only screens that work are in the menu. Later phases add theirs when built.
 const NAV = [
   { view: "overview", label: "Overview", icon: LayoutGrid },
   { view: "properties", label: "Properties", icon: Building2 },
+  { view: "repairs", label: "Maintenance", icon: Wrench },
 ];
 
 /** The landlord and property manager dashboard at /manage. */
@@ -142,6 +145,7 @@ function Dashboard({ organization, onSignOut }: { organization: Organization; on
           </Link>
         </div>
         <div className="flex min-w-0 items-center gap-4 text-[14px]">
+          <NotificationBell customer home="/manage?view=repairs" />
           <span className="truncate font-semibold">{organization.name}</span>
           <button type="button" onClick={onSignOut} className="flex-none text-white/80 hover:text-white">Sign out</button>
         </div>
@@ -174,7 +178,9 @@ function Dashboard({ organization, onSignOut }: { organization: Organization; on
                 : "Your company was not approved. Contact FixIt support."}
             </p>
           ) : null}
-          {view === "properties" ? <Properties organization={organization} /> : <Overview organization={organization} />}
+          {view === "properties" ? <Properties organization={organization} /> : null}
+          {view === "repairs" ? <Repairs organization={organization} /> : null}
+          {view === "overview" ? <Overview organization={organization} /> : null}
         </main>
       </div>
     </div>
@@ -213,8 +219,15 @@ function Overview({ organization }: { organization: Organization }) {
   ];
   return (
     <>
-      <h1 className="font-display text-[28px] font-bold">Overview</h1>
-      <p className="mb-5 text-[14px] text-[#475569]">{organization.name}</p>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-[28px] font-bold">Overview</h1>
+          <p className="text-[14px] text-[#475569]">{organization.name}</p>
+        </div>
+        <Link href="/manage?view=repairs&new=1" className={primaryButton}>
+          <Plus className="h-4 w-4" aria-hidden="true" /> New service request
+        </Link>
+      </div>
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
         {cards.map(({ label, value, icon: Icon, tone }) => (
           <div key={label} className="flex items-center gap-3 rounded-2xl border border-[#E4E9F1] bg-white p-4 shadow-sm">

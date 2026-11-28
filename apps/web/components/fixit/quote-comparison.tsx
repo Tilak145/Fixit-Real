@@ -179,7 +179,7 @@ function DeclineForm({
  * the cheapest line and the best terms are not the same offer, and that choice
  * is the customer's.
  */
-export function QuoteComparison({ quotes }: { quotes: JobQuote[] }) {
+export function QuoteComparison({ quotes, onResponded }: { quotes: JobQuote[]; onResponded?: () => void }) {
   const queryClient = useQueryClient();
   const now = useMemo(() => new Date(), []);
   // The quote the customer is in the middle of declining, if any.
@@ -190,6 +190,7 @@ export function QuoteComparison({ quotes }: { quotes: JobQuote[] }) {
     onSuccess: async () => {
       setDecliningId(null);
       await queryClient.invalidateQueries({ queryKey: ["my-requests"] });
+      onResponded?.();
     },
   });
 
