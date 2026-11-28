@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { filterProperties, photoProblem, propertyPhotoPath, repairFigures, type Property } from "./manage-model.ts";
+import { filterProperties, photoProblem, propertyPhotoPath, type Property } from "./manage-model.ts";
 
 const property = (name: string, over: Partial<Property> = {}): Property => ({
   id: name, name, kind: "residential", address: "1 Main St", city: "Akron, OH",
@@ -18,22 +18,6 @@ test("search looks at name, address and city, and the kind filter applies", () =
   assert.deepEqual(filterProperties(list, { search: "kent", kind: "all", archived: false }).map((p) => p.name), ["Oak"]);
   assert.deepEqual(filterProperties(list, { search: "elm road", kind: "apartment", archived: false }).map((p) => p.name), ["Maple"]);
   assert.deepEqual(filterProperties(list, { search: "", kind: "commercial", archived: false }), []);
-});
-
-test("overview figures count open, urgent and waiting repairs", () => {
-  const now = new Date("2026-11-20T12:00:00Z");
-  const repair = (status: string, priority = "normal", estimated: number | null = null, updated = "2026-11-10T12:00:00Z", final: number | null = null) => ({
-    status, priority, estimated_cost_cents: estimated, final_cost_cents: final, updated_at: updated,
-  });
-  const figures = repairFigures([
-    repair("submitted", "urgent"),
-    repair("awaiting_approval"),
-    repair("assigned", "normal", 25_000),
-    repair("completed", "urgent", 10_000, "2026-11-12T12:00:00Z", 12_000),
-    repair("completed", "normal", 99_000, "2026-09-12T12:00:00Z"),
-    repair("cancelled", "urgent", 50_000),
-  ], now);
-  assert.deepEqual(figures, { open: 3, urgent: 1, waitingForAnswer: 1, spentThisMonthCents: 37_000 });
 });
 
 test("a photo path starts with the organization", () => {

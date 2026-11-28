@@ -4,10 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Building2, DoorOpen, DollarSign, FileClock, LayoutGrid, Menu, Plus, Wrench } from "lucide-react";
+import { Building2, LayoutGrid, Menu, User, Wrench } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { repairFigures, type Organization, type OrganizationKind } from "@/lib/manage-model";
-import { createOrganization, getMyOrganization, listProperties, listRepairSummaries, listUnits } from "@/components/manage/data";
+import type { Organization, OrganizationKind } from "@/lib/manage-model";
+import { createOrganization, getMyOrganization } from "@/components/manage/data";
+import { Overview } from "@/components/manage/overview";
 import { Properties } from "@/components/manage/properties";
 import { Repairs } from "@/components/manage/repairs";
 import { NotificationBell } from "@/components/fixit/notification-bell";
@@ -135,26 +136,31 @@ function Dashboard({ organization, onSignOut }: { organization: Organization; on
 
   return (
     <div className="min-h-screen bg-[#F3F6FB] text-[#0B1B33]">
+      {/* Shrinks to fit a narrower window, so it keeps the same layout as the full-size design. */}
+      <div className="lg:[zoom:0.65] min-[1280px]:[zoom:0.78] min-[1440px]:[zoom:0.88] min-[1640px]:[zoom:1]">
       <header className="flex items-center justify-between gap-3 bg-[#0F2447] px-4 py-3 text-white">
         <div className="flex items-center gap-3">
           <button type="button" aria-label="Menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)} className="lg:hidden">
             <Menu className="h-6 w-6" aria-hidden="true" />
           </button>
-          <Link href="/" className="font-display text-[22px] font-bold">
-            Fix<span className="text-[#F26B1D]">It</span>
-          </Link>
+          <Logo />
         </div>
-        <div className="flex min-w-0 items-center gap-4 text-[14px]">
+        <div className="flex min-w-0 items-center gap-2 text-[14px] sm:gap-4">
           <NotificationBell customer home="/manage?view=repairs" />
-          <span className="truncate font-semibold">{organization.name}</span>
+          <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-white text-[#0F2447]">
+            <User className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <span className="hidden truncate font-semibold sm:inline">{organization.name}</span>
           <button type="button" onClick={onSignOut} className="flex-none text-white/80 hover:text-white">Sign out</button>
         </div>
       </header>
       <div className="lg:flex">
-        <aside className={`${menuOpen ? "block" : "hidden"} bg-[#0F2447] px-3 py-4 text-white lg:block lg:min-h-[calc(100vh-56px)] lg:w-[230px] lg:flex-none`}>
-          <p className="mb-2 px-3 text-[11.5px] font-bold uppercase tracking-wide text-white/60">
+        <aside className={`${menuOpen ? "block" : "hidden"} bg-[#0F2447] px-3 py-4 text-white lg:block lg:min-h-[calc(154vh-72px)] lg:w-[250px] lg:flex-none min-[1280px]:min-h-[calc(128vh-72px)] min-[1440px]:min-h-[calc(114vh-72px)] min-[1640px]:min-h-[calc(100vh-72px)]`}>
+          <p className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-[15px] font-semibold">
+            <Building2 className="h-5 w-5" aria-hidden="true" />
             {organization.kind === "company" ? "Property Manager" : "Landlord"}
           </p>
+          <p className="mb-2 mt-5 px-3 text-[12px] font-semibold tracking-wide text-white/60">WORKSPACE</p>
           <nav className="space-y-1">
             {NAV.map(({ view: target, label, icon: Icon }) => (
               <Link
@@ -183,69 +189,24 @@ function Dashboard({ organization, onSignOut }: { organization: Organization; on
           {view === "overview" ? <Overview organization={organization} /> : null}
         </main>
       </div>
+      </div>
     </div>
   );
 }
 
-/** Every number here is counted from this organization's own records. */
-function Overview({ organization }: { organization: Organization }) {
-  const figures = useQuery({
-    queryKey: ["manage", "overview", organization.id],
-    refetchInterval: 60_000,
-    queryFn: async () => {
-      const [properties, units, repairs] = await Promise.all([
-        listProperties(organization.id),
-        listUnits(organization.id),
-        listRepairSummaries(organization.id),
-      ]);
-      const active = new Set(properties.filter((p) => !p.archived_at).map((p) => p.id));
-      return {
-        properties: active.size,
-        units: units.filter((unit) => !unit.archived_at && active.has(unit.property_id)).length,
-        ...repairFigures(repairs),
-      };
-    },
-  });
-  if (figures.isPending) return <Loading label="Counting your records…" />;
-  if (figures.isError) return <ErrorState message={(figures.error as Error).message} onRetry={() => figures.refetch()} />;
-  const data = figures.data;
-  const cards = [
-    { label: "Properties", value: String(data.properties), icon: Building2, tone: "bg-[#E3EEFD] text-[#1457C0]" },
-    { label: "Rental units", value: String(data.units), icon: DoorOpen, tone: "bg-[#FFF0E3] text-[#B4470A]" },
-    { label: "Open repairs", value: String(data.open), icon: Wrench, tone: "bg-[#FFF0E3] text-[#B4470A]" },
-    { label: "Urgent repairs", value: String(data.urgent), icon: AlertTriangle, tone: "bg-[#FDE7E7] text-[#B42318]" },
-    { label: "Prices waiting", value: String(data.waitingForAnswer), icon: FileClock, tone: "bg-[#EEE8FB] text-[#5B3FB0]" },
-    { label: "Accepted this month", value: `$${(data.spentThisMonthCents / 100).toLocaleString("en-US")}`, icon: DollarSign, tone: "bg-[#DCF3E2] text-[#136C34]" },
-  ];
+function Logo() {
   return (
-    <>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-[28px] font-bold">Overview</h1>
-          <p className="text-[14px] text-[#475569]">{organization.name}</p>
-        </div>
-        <Link href="/manage?view=repairs&new=1" className={primaryButton}>
-          <Plus className="h-4 w-4" aria-hidden="true" /> New service request
-        </Link>
-      </div>
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
-        {cards.map(({ label, value, icon: Icon, tone }) => (
-          <div key={label} className="flex items-center gap-3 rounded-2xl border border-[#E4E9F1] bg-white p-4 shadow-sm">
-            <span className={`grid h-12 w-12 flex-none place-items-center rounded-full ${tone}`}>
-              <Icon className="h-6 w-6" aria-hidden="true" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[13px] text-[#334155]">{label}</span>
-              <strong className="block truncate font-display text-[26px] leading-tight">{value}</strong>
-            </span>
-          </div>
-        ))}
-      </div>
-      {data.properties === 0 ? (
-        <p className="mt-5 text-[14px] text-[#475569]">
-          Start by <Link href="/manage?view=properties" className="font-bold text-[#1457C0] hover:underline">adding your first property</Link>.
-        </p>
-      ) : null}
-    </>
+    <Link href="/" aria-label="FixIt home" className="flex items-center gap-2.5">
+      <svg width="42" height="36" viewBox="0 0 46 40" aria-hidden="true">
+        <path d="M23 1 1 20h6v19h32V20h6z" fill="#F26B1D" />
+        <path d="M17 22h5v5h-5zm7 0h5v5h-5zm-7 7h5v5h-5zm7 0h5v5h-5z" fill="#fff" />
+      </svg>
+      <span className="leading-none">
+        <span className="block font-display text-[25px] font-bold text-white">
+          Fix<span className="text-[#F26B1D]">It</span>
+        </span>
+        <span className="block text-[10px] font-bold tracking-[0.14em] text-white">LOCAL SERVICES</span>
+      </span>
+    </Link>
   );
 }

@@ -7,7 +7,6 @@ import {
   type OrganizationKind,
   type Property,
   type PropertyKind,
-  type RepairSummary,
   type Unit,
 } from "@/lib/manage-model";
 
@@ -50,15 +49,6 @@ export async function listUnits(organizationId: string): Promise<Unit[]> {
   const { data, error } = await requireSupabase().from("property_units").select(UNIT_FIELDS).eq("organization_id", organizationId);
   check(error);
   return (data ?? []) as Unit[];
-}
-
-export async function listRepairSummaries(organizationId: string): Promise<RepairSummary[]> {
-  const { data, error } = await requireSupabase()
-    .from("maintenance_requests")
-    .select("status,priority,estimated_cost_cents,final_cost_cents,updated_at")
-    .eq("organization_id", organizationId);
-  check(error);
-  return (data ?? []) as RepairSummary[];
 }
 
 export async function listServedCities(): Promise<string[]> {

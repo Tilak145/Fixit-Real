@@ -58,38 +58,6 @@ export function filterProperties(properties: Property[], filter: PropertyFilter)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export const OPEN_REPAIR_STATUSES = ["submitted", "awaiting_quotes", "awaiting_approval", "assigned", "scheduled", "in_progress"];
-
-export interface RepairSummary {
-  status: string;
-  priority: string;
-  estimated_cost_cents: number | null;
-  final_cost_cents: number | null;
-  updated_at: string;
-}
-
-/**
- * The repair figures on the overview. "This month" counts accepted prices (or the
- * final cost where one was recorded) on repairs last changed this month; it is
- * not money FixIt saw paid, because customers pay professionals directly.
- */
-export function repairFigures(repairs: RepairSummary[], now: Date = new Date()) {
-  const open = repairs.filter((repair) => OPEN_REPAIR_STATUSES.includes(repair.status));
-  const spent = repairs
-    .filter((repair) => ["assigned", "scheduled", "in_progress", "completed"].includes(repair.status))
-    .filter((repair) => {
-      const when = new Date(repair.updated_at);
-      return when.getFullYear() === now.getFullYear() && when.getMonth() === now.getMonth();
-    })
-    .reduce((sum, repair) => sum + (repair.final_cost_cents ?? repair.estimated_cost_cents ?? 0), 0);
-  return {
-    open: open.length,
-    urgent: open.filter((repair) => repair.priority === "urgent").length,
-    waitingForAnswer: open.filter((repair) => repair.status === "awaiting_approval").length,
-    spentThisMonthCents: spent,
-  };
-}
-
 /** A storage path for a property photo; the first part is what the access rule checks. */
 export function propertyPhotoPath(organizationId: string, propertyId: string, fileName: string, now: number = Date.now()): string {
   const ending = /\.([a-z0-9]{2,5})$/iu.exec(fileName)?.[1]?.toLowerCase() ?? "jpg";
