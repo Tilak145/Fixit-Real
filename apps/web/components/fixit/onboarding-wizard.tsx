@@ -13,6 +13,7 @@ import { listPaymentProducts, type PaymentProduct } from "@/lib/payments";
 import { CheckoutButton } from "@/components/payments";
 import { useAuth } from "@/lib/auth-context";
 import { requireSupabase, getSupabase } from "@/lib/supabase";
+import { withPrivate } from "@/lib/provider-private";
 import {
   documentSignedUrl,
   listMyDocuments,
@@ -141,7 +142,7 @@ export function OnboardingWizard() {
       const { data: saved } = await supabase
         .from("providers")
         .select(
-          "id,business_name,phone,email,website,address,description,years_in_business,employees,plan,business_registration_number,logo_url",
+          "id,business_name,website,description,years_in_business,employees,plan,logo_url",
         )
         .eq("auth_user_id", user.id)
         .maybeSingle();
@@ -150,23 +151,24 @@ export function OnboardingWizard() {
         supabase.from("provider_services").select("category_slug").eq("provider_id", saved.id),
         supabase.from("provider_service_areas").select("city").eq("provider_id", saved.id),
       ]);
-      // The licence number is private to its owner and staff, so it is read separately.
-      const { data: licence } = await supabase.from("providers").select("license_number").eq("id", saved.id).maybeSingle();
+      // Contact details and licence numbers are private to the business, so they are read separately.
+      // Without them the form must stay untouched: saving blanks would erase them.
+      const [own] = await withPrivate(supabase, [saved], ["phone", "email", "address", "business_registration_number", "license_number"]);
       if (!active) return;
       setCurrentPlan(saved.plan);
       setData((d) => ({
         ...d,
         businessName: saved.business_name ?? d.businessName,
-        phone: saved.phone ?? d.phone,
-        email: saved.email ?? d.email,
+        phone: own.phone ?? d.phone,
+        email: own.email ?? d.email,
         website: saved.website ?? "",
-        address: saved.address ?? "",
+        address: own.address ?? "",
         description: saved.description ?? "",
         years: saved.years_in_business ?? d.years,
         employees: saved.employees ?? d.employees,
         plan: saved.plan as WizardData["plan"],
-        licenseNumber: licence?.license_number ?? d.licenseNumber,
-        businessRegistration: saved.business_registration_number ?? "",
+        licenseNumber: own.license_number ?? d.licenseNumber,
+        businessRegistration: own.business_registration_number ?? "",
         logoUrl: saved.logo_url ?? "",
         services: services.data?.map((row) => row.category_slug as string) ?? d.services,
         cities: areas.data?.map((row) => row.city as string) ?? d.cities,

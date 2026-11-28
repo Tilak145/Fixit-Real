@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState, LoadingState } from "@/components/app/states";
 import { requireSupabase } from "@/lib/supabase";
+import { withPrivate } from "@/lib/provider-private";
 import { stateFromAddress, stateInfo } from "@/lib/states";
 import { documentSignedUrl } from "@/lib/fixit";
 import { StatusPill } from "./ui";
@@ -127,12 +128,12 @@ export function AdminOverview({ onOpen, onGo }: { onOpen: (table: string) => voi
     queryFn: async () => {
       const { data, error } = await requireSupabase()
         .from("providers")
-        .select("id,auth_user_id,business_name,address,plan,status,license_number,license_status,license_note,license_verified_at,insurance_status,insurance_verified_at,business_registration_number,business_registration_status,business_registration_checked_at,created_at")
+        .select("id,auth_user_id,business_name,plan,status,license_status,license_verified_at,insurance_status,insurance_verified_at,business_registration_status,business_registration_checked_at,created_at")
         .eq("status", "pending")
         .order("created_at", { ascending: true })
         .limit(5);
       if (error) throw new Error(error.message);
-      return data ?? [];
+      return withPrivate(requireSupabase(), data ?? [], ["address", "license_number", "license_note", "business_registration_number"]);
     },
   });
 

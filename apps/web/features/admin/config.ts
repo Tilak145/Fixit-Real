@@ -27,7 +27,7 @@ export const adminResources: AdminResource[] = [
     table: "providers",
     label: "Professionals",
     select:
-      "id,business_name,pro_number,status,plan,license_number,license_status,business_registration_number,business_registration_status,accepts_emergency,rating,review_count,email,phone,created_at",
+      "id,business_name,pro_number,status,plan,license_status,business_registration_status,accepts_emergency,rating,review_count,created_at",
     columns: ["business_name", "pro_number", "status", "plan", "license_number", "license_status", "business_registration_number", "business_registration_status", "accepts_emergency", "rating", "review_count", "email", "phone"],
   },
   {

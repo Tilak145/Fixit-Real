@@ -1,4 +1,5 @@
-﻿import { getSupabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
+import { withPrivate } from "@/lib/provider-private";
 
 export * from "@/lib/commission-math";
 
@@ -148,10 +149,11 @@ export async function listSubscriptionOverview(): Promise<SubscriptionRow[]> {
   const userIds = [...new Set(rows.map((r) => r.user_id))];
   const { data: providers } = await supabase
     .from("providers")
-    .select("auth_user_id,plan,email")
+    .select("id,auth_user_id,plan")
     .in("auth_user_id", userIds);
+  const withEmail = await withPrivate(supabase, (providers ?? []) as Array<{ id: string; auth_user_id: string; plan: string }>, ["email"]);
   const byUser = new Map(
-    (providers ?? []).map((p) => [p.auth_user_id as string, { plan: p.plan as string, email: p.email as string | null }]),
+    withEmail.map((p) => [p.auth_user_id as string, { plan: p.plan as string, email: p.email as string | null }]),
   );
   return rows.map((row) => ({
     ...row,

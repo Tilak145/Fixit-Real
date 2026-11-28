@@ -45,10 +45,7 @@ export interface ProSummary {
   id: string;
   business_name: string;
   description: string | null;
-  email: string | null;
-  phone: string | null;
   website: string | null;
-  address: string | null;
   city: string;
   areas: string[];
   rating: number;
@@ -230,10 +227,7 @@ type ProRow = {
   id: string;
   business_name: string;
   description: string | null;
-  email: string | null;
-  phone: string | null;
   website: string | null;
-  address: string | null;
   rating: number;
   review_count: number;
   logo_url: string | null;
@@ -245,7 +239,7 @@ type ProRow = {
 };
 
 const PRO_FIELDS =
-  'id,business_name,description,email,phone,website,address,rating,review_count,logo_url,years_in_business,employees,plan,accepting_work,accepts_emergency';
+  'id,business_name,description,website,rating,review_count,logo_url,years_in_business,employees,plan,accepting_work,accepts_emergency';
 
 async function withAreas(pros: ProRow[]): Promise<ProSummary[]> {
   const fallback = 'Akron, OH';

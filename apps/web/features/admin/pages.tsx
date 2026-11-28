@@ -50,6 +50,7 @@ import {
 import { EmptyState, ErrorState, LoadingState } from "@/components/app/states";
 import { useAuth } from "@/lib/auth-context";
 import { requireSupabase, supabaseRestRoot } from "@/lib/supabase";
+import { withPrivate } from "@/lib/provider-private";
 import { cn } from "@/lib/utils";
 import { digitsOf, groupNumber } from "@/lib/fixit-numbers";
 import { AdminAccounts } from "./accounts";
@@ -177,6 +178,10 @@ function ResourceTable({ table, label, listColumns, primaryKey, select }: {
       if (error) ({ data, error } = await read());
       if (error) throw new Error(error.message);
       const loaded = (data ?? []) as unknown as Row[];
+      // A business's contact details and licence numbers come through a staff-only function.
+      if (table === "providers") {
+        return withPrivate(client, loaded as Array<Row & { id: string }>, ["license_number", "business_registration_number", "email", "phone"]);
+      }
       // A request's customer number is looked up by the database from the list
       // of requests on this page, so it is right even for a customer who is not
       // in the first page of accounts.

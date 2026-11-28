@@ -40,6 +40,7 @@ import { UpcomingVisit } from "@/components/fixit/upcoming-visit";
 import { NotificationBell } from "@/components/fixit/notification-bell";
 import { SITE_EMAIL } from "@/lib/site-contact";
 import { getSupabase, requireSupabase } from "@/lib/supabase";
+import { withPrivate } from "@/lib/provider-private";
 import { currentPrice } from "@/lib/payments-price";
 import { getMyPaymentState, listPaymentProducts, type MyPaymentState } from "@/lib/payments";
 import { BillingPortalButton, CheckoutButton } from "@/components/payments";
@@ -630,12 +631,14 @@ export function ProviderDashboard() {
       const { data, error } = await supabase
         .from("providers")
         .select(
-          "id,business_name,email,phone,website,address,description,status,plan,rating,review_count,logo_url,years_in_business,employees,business_registration_number,business_registration_status,trial_ends_at,billing_lapsed_at,lat,lng,pro_number",
+          "id,business_name,website,description,status,plan,rating,review_count,logo_url,years_in_business,employees,business_registration_status,trial_ends_at,billing_lapsed_at,pro_number",
         )
         .eq("auth_user_id", user!.id)
         .maybeSingle();
       if (error) throw new Error(error.message);
-      return data;
+      if (!data) return null;
+      const [row] = await withPrivate(supabase, [data], ["email", "phone", "address", "business_registration_number", "lat", "lng"]);
+      return row;
     },
   });
 
