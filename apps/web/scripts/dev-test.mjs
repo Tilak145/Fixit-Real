@@ -1,16 +1,12 @@
 // Runs the website on this computer against the TEST database (fixit-test), so
 // trying things out can never touch real customers. Open http://localhost:3100.
-//
-// The values below are the test project's public address and public (anon) key.
-// They are meant to be in browsers; no secret key belongs here.
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { TEST_DATABASE_ENV } from "../test-database.mjs";
 
 const env = {
   ...process.env,
-  NEXT_PUBLIC_SUPABASE_URL: "https://mcmekpanodhzkdisvaiy.supabase.co",
-  NEXT_PUBLIC_SUPABASE_ANON_KEY:
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jbWVrcGFub2RoemtkaXN2YWl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU4MzM4MDEsImV4cCI6MjExMTQwOTgwMX0.MqQWpKxw8Qd6QfRoWXxKwt4IJSn_jAn-hepB4j4YTzE",
+  ...TEST_DATABASE_ENV,
   NEXT_PUBLIC_SITE_URL: "http://localhost:3100",
   // A separate build folder, so nothing compiled for the live database is reused.
   FIXIT_DIST_DIR: ".next-test",
