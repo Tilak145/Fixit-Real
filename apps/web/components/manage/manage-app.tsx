@@ -66,8 +66,8 @@ function SignedOut() {
         </p>
         <div className="flex flex-col gap-2">
           <Link href="/login?next=/manage" className={primaryButton}>Log in</Link>
-          <Link href="/register" className="text-center text-[14px] font-bold text-[#1457C0] hover:underline">
-            Create a free account first, then come back here
+          <Link href="/register?next=/manage" className="text-center text-[14px] font-bold text-[#1457C0] hover:underline">
+            Create a free account
           </Link>
         </div>
       </Card>

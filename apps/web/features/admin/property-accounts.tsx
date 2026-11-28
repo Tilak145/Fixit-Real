@@ -116,7 +116,7 @@ export function AdminPropertyAccounts() {
         </ul>
       )}
       <p className="text-[12.5px] text-muted-foreground">
-        Stopping an account does not recall jobs it has already sent. No email goes out when you decide; they see it when they next open their dashboard.
+        Stopping an account does not recall jobs it has already sent. The account owner is emailed when you decide.
       </p>
     </div>
   );

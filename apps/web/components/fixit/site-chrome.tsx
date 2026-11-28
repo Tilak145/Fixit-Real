@@ -170,6 +170,12 @@ function BusinessMenu({ onChoose }: { onChoose: (mode: Exclude<ProWindowMode, nu
               </span>
             </span>
           </button>
+          <Link href="/manage" onClick={() => setOpen(false)} className="mt-1 block border-t border-border px-3 py-2.5 hover:bg-muted">
+            <strong className="block text-[14px] text-secondary">Landlords &amp; property managers</strong>
+            <span className="block text-[12.5px] leading-snug text-muted-foreground">
+              Keep your properties and repairs in one place. Free.
+            </span>
+          </Link>
         </div>
       ) : null}
     </div>
@@ -260,6 +266,10 @@ export function SiteHeader({ city }: { city?: string | null } = {}) {
           <SectionLink id="services" className="hover:text-primary">
             Services
           </SectionLink>
+          {/* Narrower screens have no room; the Join menu and the footer carry the link there. */}
+          <Link href="/manage" className="hidden hover:text-primary min-[1100px]:inline">
+            Landlords
+          </Link>
         </nav>
         {/* Angi's arrangement: location, sign-in, join. */}
         <div className="ml-auto flex items-center gap-2.5 sm:gap-4">
@@ -371,6 +381,9 @@ export function SiteFooter() {
           </Link>
           <Link href="/for-businesses" className="mb-2 block text-sm hover:text-white">
             Join as a pro
+          </Link>
+          <Link href="/manage" className="mb-2 block text-sm hover:text-white">
+            Landlords &amp; property managers
           </Link>
           <Link href="/account" className="mb-2 block text-sm hover:text-white">
             My Account

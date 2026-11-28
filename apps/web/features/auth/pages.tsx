@@ -164,7 +164,7 @@ export function LoginPage({ allowEmailOtp = false, defaultEmailOtp = false, redi
     <AuthFrame
       title="Welcome back"
       description="Continue with your account."
-      footer={<>Need an account? <a className="text-primary underline-offset-4 hover:underline" href="/register">Create one</a></>}
+      footer={<>Need an account? <a className="text-primary underline-offset-4 hover:underline" href={redirectTo === "/manage" ? "/register?next=/manage" : "/register"}>Create one</a></>}
     >
       <form className="space-y-4" onSubmit={(event) => void submit(event)}>
         <div className="space-y-2">
@@ -185,7 +185,9 @@ export function LoginPage({ allowEmailOtp = false, defaultEmailOtp = false, redi
   );
 }
 
-export function RegisterPage() {
+export function RegisterPage({ redirectTo = "/" }: { redirectTo?: string } = {}) {
+  // A landlord or property manager signing up is brought back to their dashboard.
+  const forProperty = redirectTo === "/manage";
   const auth = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -197,13 +199,13 @@ export function RegisterPage() {
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
   if (auth.status === "loading") return <LoadingAuth />;
   if (auth.status === "unavailable") return <UnavailableAuth />;
-  if (verificationEmail) return <EmailCodeForm email={verificationEmail} purpose="signup" onBack={() => setVerificationEmail(null)} />;
+  if (verificationEmail) return <EmailCodeForm email={verificationEmail} purpose="signup" redirectTo={redirectTo} onBack={() => setVerificationEmail(null)} />;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (pending) return;
     setPending(true);
-    const result = await auth.signUp(email.trim(), password, { fullName, phone, address, city });
+    const result = await auth.signUp(email.trim(), password, { fullName, phone, address, city }, forProperty ? redirectTo : undefined);
     setPending(false);
     // What they typed stays in the form, so a refused signup can be retried
     // without entering a name, number and address again.
@@ -213,14 +215,14 @@ export function RegisterPage() {
       setVerificationEmail(email.trim());
       return;
     }
-    window.location.replace("/");
+    window.location.replace(redirectTo);
   };
 
   return (
     <AuthFrame
-      title="Create an account"
-      description="Tell us where the work is, so local pros can quote accurately."
-      footer={<>Already have an account? <a className="text-primary hover:underline" href="/login">Sign in</a></>}
+      title={forProperty ? "Create your property account" : "Create an account"}
+      description={forProperty ? "First your own details. You add your properties next." : "Tell us where the work is, so local pros can quote accurately."}
+      footer={<>Already have an account? <a className="text-primary hover:underline" href={forProperty ? "/login?next=/manage" : "/login"}>Sign in</a></>}
     >
       <form className="space-y-4" onSubmit={(event) => void submit(event)}>
         <div className="space-y-2"><Label htmlFor="register-name">Full name</Label><Input id="register-name" autoComplete="name" required value={fullName} onChange={(event) => setFullName(event.target.value)} /></div>
@@ -228,7 +230,7 @@ export function RegisterPage() {
         <div className="space-y-2"><Label htmlFor="register-password">Password</Label><Input id="register-password" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} /></div>
         <div className="space-y-2"><Label htmlFor="register-phone">Phone</Label><Input id="register-phone" type="tel" autoComplete="tel" required value={phone} onChange={(event) => setPhone(event.target.value)} /></div>
         <div className="space-y-2">
-          <Label htmlFor="register-address">Service address</Label>
+          <Label htmlFor="register-address">{forProperty ? "Your address" : "Service address"}</Label>
           <AddressInput
             id="register-address"
             value={address}
