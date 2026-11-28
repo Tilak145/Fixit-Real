@@ -2,6 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "fixit-web-test",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["scripts/dev-test.mjs"],
+      "cwd": "apps/web",
+      "port": 3100
+    },
+    {
       "name": "fixit-web",
       "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
       "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "--webpack", "-p", "3000"],

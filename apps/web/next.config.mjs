@@ -2,6 +2,8 @@ import { fileURLToPath } from "node:url";
 
 /** @type {import("next").NextConfig} */
 const config = {
+  // The test-database server (scripts/dev-test.mjs) builds into its own folder.
+  distDir: process.env.FIXIT_DIST_DIR || ".next",
   allowedDevOrigins: ["127.0.0.1"],
   poweredByHeader: false,
   webpack(webpackConfig) {
