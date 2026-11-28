@@ -65,6 +65,7 @@ import { AdminCustomerLookup } from "./customer-lookup";
 import { AdminTrialReminders } from "./trial-reminders";
 import { AdminDispatch } from "./dispatch";
 import { AdminServiceDemand } from "./service-demand";
+import { AdminPropertyAccounts } from "./property-accounts";
 import { AdminProLookup } from "./pro-lookup";
 import { AdminCities } from "./cities";
 import { AdminSignIn } from "./admin-signin";
@@ -577,6 +578,7 @@ const SECTION_HINT: Record<string, string> = {
   dispatch: "Emergencies waiting for a crew, nearest first",
   service_waitlist: "Who is asking for a trade nobody serves yet",
   pro_lookup: "Type a business's nine-digit FixIt number to find it",
+  property_accounts: "Landlords and property managers, and which may send jobs",
   accounts: "Everyone with a FixIt account",
   tasks: "Work handed out to the team, and what is still open",
   team: "Who works in this dashboard, and as what",
@@ -587,7 +589,7 @@ const SECTION_HINT: Record<string, string> = {
 // tables happen to be named.
 const NAV_GROUPS: { title: string; keys: string[] }[] = [
   { title: "Work", keys: ["tasks"] },
-  { title: "Marketplace", keys: ["dispatch", "providers", "pro_lookup", "customer_lookup", "quote_requests", "lead_integrity", "appointments", "reviews", "messages"] },
+  { title: "Marketplace", keys: ["dispatch", "providers", "property_accounts", "pro_lookup", "customer_lookup", "quote_requests", "lead_integrity", "appointments", "reviews", "messages"] },
   { title: "Revenue", keys: ["subscriptions", "trial_reminders"] },
   { title: "Settings", keys: ["service_waitlist", "service_categories", "service_cities", "accounts", "team", "activity"] },
 ];
@@ -637,7 +639,7 @@ export function AdminPage() {
   // A section the role may not see must not stay open when access changes.
   useEffect(() => {
     // A section the role may not see must not stay open when the role changes.
-    if (["team", "subscriptions", "trial_reminders", "customer_lookup", "accounts", "service_waitlist"].includes(section) && role.data && !isOwner) {
+    if (["team", "subscriptions", "trial_reminders", "customer_lookup", "accounts", "service_waitlist", "property_accounts"].includes(section) && role.data && !isOwner) {
       setSection("overview");
     }
   }, [isOwner, role.data, section]);
@@ -693,7 +695,7 @@ export function AdminPage() {
 
   // Staff run the marketplace. The owner alone sees the screens that decide
   // who works here, reach every account, or change the site's settings.
-  const OWNER_ONLY = new Set(["subscriptions", "trial_reminders", "customer_lookup", "accounts", "team", "service_cities", "service_categories", "service_waitlist"]);
+  const OWNER_ONLY = new Set(["subscriptions", "trial_reminders", "customer_lookup", "accounts", "team", "service_cities", "service_categories", "service_waitlist", "property_accounts"]);
   // Until the saved list arrives every screen stays as it was, so the menu
   // never blinks or hides pages from someone whose access is still loading.
   const available = new Set([
@@ -706,6 +708,7 @@ export function AdminPage() {
     "dispatch",
     "service_waitlist",
     "pro_lookup",
+    "property_accounts",
     ...adminResources.map((resource) => resource.table),
     ...(adminAccounts ? ["accounts"] : []),
     ...(isOwner ? ["team"] : []),
@@ -716,7 +719,7 @@ export function AdminPage() {
     if (!isOwner && granted && key !== "tasks" && !granted.has(key)) available.delete(key);
   }
   const navigation = Object.fromEntries(
-    ["overview", "tasks", "dispatch", "service_waitlist", "pro_lookup", "subscriptions", "trial_reminders", "lead_integrity", "customer_lookup", ...adminResources.map((resource) => resource.table), "accounts", "team", "activity"]
+    ["overview", "tasks", "dispatch", "service_waitlist", "pro_lookup", "property_accounts", "subscriptions", "trial_reminders", "lead_integrity", "customer_lookup", ...adminResources.map((resource) => resource.table), "accounts", "team", "activity"]
       .filter((key) => available.has(key))
       .map((key) => {
         const resource = adminResources.find((item) => item.table === key);
@@ -730,6 +733,7 @@ export function AdminPage() {
             : key === "dispatch" ? "Emergency dispatch"
             : key === "service_waitlist" ? "Trade waitlist"
             : key === "pro_lookup" ? "Find business"
+            : key === "property_accounts" ? "Property accounts"
             : key === "accounts" ? "Accounts"
               : key === "team" ? "Team"
                 : key === "activity" ? "Activity"
@@ -744,6 +748,7 @@ export function AdminPage() {
             : key === "dispatch" ? Siren
             : key === "service_waitlist" ? BellRing
             : key === "pro_lookup" ? Building2
+            : key === "property_accounts" ? Building2
             : key === "accounts" ? UsersRound
               : key === "team" ? ShieldCheck
                 : key === "activity" ? ClipboardList
@@ -866,6 +871,7 @@ export function AdminPage() {
           {section === "dispatch" ? <AdminDispatch /> : null}
           {section === "service_waitlist" && isOwner ? <AdminServiceDemand /> : null}
           {section === "pro_lookup" ? <AdminProLookup /> : null}
+          {section === "property_accounts" && isOwner ? <AdminPropertyAccounts /> : null}
           {section === "accounts" && adminAccounts ? <AdminAccounts /> : null}
           {section === "team" && isOwner ? <AdminTeam selfId={auth.user?.id ?? null} /> : null}
           {section === "team" && isOwner ? <AdminStaffAccess /> : null}

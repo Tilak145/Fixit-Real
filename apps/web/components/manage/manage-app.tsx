@@ -181,7 +181,7 @@ function Dashboard({ organization, onSignOut }: { organization: Organization; on
             <p role="status" className="mb-4 rounded-xl border border-[#F0DCB6] bg-[#FFF7EC] px-4 py-3 text-[13.5px] font-bold text-[#8A4B00]">
               {organization.status === "pending"
                 ? "FixIt is reviewing your company. You can add properties now."
-                : "Your company was not approved. Contact FixIt support."}
+                : "FixIt has not approved sending jobs from this account. Contact FixIt support."}
             </p>
           ) : null}
           {view === "properties" ? <Properties organization={organization} /> : null}
