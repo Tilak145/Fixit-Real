@@ -1736,7 +1736,7 @@ export function ProviderDashboard() {
           {provider.data?.billing_lapsed_at && section !== "plan" ? (
             <div role="alert" className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-[#E8A0A0] bg-[#FDECEA] px-4 py-3">
               <span className="min-w-0 flex-1 text-[14px] font-bold text-[#8A1F11]">
-                Your subscription has ended. You are not getting new leads.
+                Your plan is not paid, or your subscription ended. You are not getting new leads.
               </span>
               <button
                 type="button"
@@ -2635,8 +2635,8 @@ export function ProviderDashboard() {
                   <p className="text-sm text-muted-foreground">Checking billing…</p>
                 ) : pro.billing_lapsed_at ? (
                   <p role="alert" className="text-sm font-bold text-[#B3261E]">
-                    Your subscription has ended, so you are not getting new leads. Choose a plan below to switch them
-                    back on.
+                    Your plan is not paid, or your subscription ended, so you are not getting new leads. Choose a plan below to
+                    switch them on.
                   </p>
                 ) : (paymentState.data as MyPaymentState | undefined)?.subscriptions?.length ? (
                   <div className="space-y-3">

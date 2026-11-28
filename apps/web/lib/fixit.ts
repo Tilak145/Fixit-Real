@@ -871,6 +871,9 @@ export async function listMyDocuments(): Promise<Record<ProviderDocumentKind, Pr
 
 /** A ceiling that keeps a phone photo of a document comfortably inside it. */
 const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+/** The same lists the storage buckets enforce. */
+const DOCUMENT_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
+const LOGO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 /**
  * Store one onboarding document in the private bucket and record it. The path
@@ -882,6 +885,7 @@ export async function uploadProviderDocument(kind: ProviderDocumentKind, file: F
   if (!supabase) throw new Error("Data services are not connected yet, so the document cannot be saved.");
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new Error("Please create your provider account first.");
+  if (!DOCUMENT_TYPES.includes(file.type)) throw new Error("Please choose a photo (JPG, PNG, WebP or HEIC) or a PDF.");
   if (file.size > MAX_DOCUMENT_BYTES) throw new Error("That file is larger than 10 MB. Please choose a smaller file.");
 
   const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, "_").slice(-80) || "document";
@@ -923,7 +927,7 @@ export async function uploadProviderLogo(file: File): Promise<string> {
   if (!supabase) throw new Error("Data services are not connected yet, so the logo cannot be saved.");
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new Error("Please sign in to your provider account first.");
-  if (!file.type.startsWith("image/")) throw new Error("Please choose an image file for your logo.");
+  if (!LOGO_TYPES.includes(file.type)) throw new Error("Please choose a JPG, PNG, WebP or GIF picture for your logo.");
   if (file.size > MAX_LOGO_BYTES) throw new Error("That image is larger than 4 MB. Please choose a smaller one.");
 
   const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, "_").slice(-60) || "logo";
